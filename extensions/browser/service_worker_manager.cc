@@ -64,6 +64,15 @@ void ServiceWorkerManager::RegisterExtension(const Extension* extension) {
   ++ext_state.outstanding_state_changes;
   const GURL service_worker_script = extension->GetResourceURL(
       BackgroundInfo::GetServiceWorkerScript(extension));
+
+  GetSWContext(extension->id())->RegisterServiceWorker(
+      extension->GetResourceURL("/*"),
+      service_worker_script,
+      -1,  // host->render_process_host()->GetID(),
+      base::Bind(&ServiceWorkerManager::FinishRegistration,
+                 WeakThis(),
+                 extension->id()));
+  return;
   // TODO(jyasskin): Create the extension process in a cleaner way. We don't
   // need a view, for instance. Using the service_worker_script as the
   // background host is just totally horrible.

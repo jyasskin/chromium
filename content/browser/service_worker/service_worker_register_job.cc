@@ -34,7 +34,11 @@ void ServiceWorkerRegisterJob::AddCallback(const RegistrationCallback& callback,
   // If we've created a pending version, associate source_provider it with
   // that, otherwise queue it up.
   callbacks_.push_back(callback);
-  DCHECK_NE(-1, process_id);
+  if (process_id == -1) {
+    // If the Service Worker was registered directly from the browser process,
+    // there is no renderer process to attach to it.
+    return;
+  }
   if (pending_version_) {
     pending_version_->AddProcessToWorker(process_id);
   } else {

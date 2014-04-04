@@ -557,7 +557,7 @@ IN_PROC_BROWSER_TEST_F(ServiceWorkerBlackBoxBrowserTest, Registration) {
     public_context()->RegisterServiceWorker(
         embedded_test_server()->GetURL("/*"),
         embedded_test_server()->GetURL(kWorkerUrl),
-        RenderProcessID(),
+        shell()->web_contents()->GetSiteInstance(),
         base::Bind(&ServiceWorkerBlackBoxBrowserTest::ExpectResultAndRun,
                    true,
                    run_loop.QuitClosure()));

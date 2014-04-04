@@ -54,6 +54,8 @@ static void FinishRegistrationOnIO(
     ServiceWorkerStatusCode status,
     int64 registration_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  if (status != SERVICE_WORKER_OK)
+    LOG(ERROR) << ServiceWorkerStatusToString(status);
   BrowserThread::PostTask(
       BrowserThread::UI,
       FROM_HERE,
@@ -63,7 +65,7 @@ static void FinishRegistrationOnIO(
 void ServiceWorkerContextWrapper::RegisterServiceWorker(
     const GURL& pattern,
     const GURL& script_url,
-    int source_process_id,
+    SiteInstance* site_instance,
     const ResultCallback& continuation) {
   if (!BrowserThread::CurrentlyOn(BrowserThread::IO)) {
     BrowserThread::PostTask(
@@ -89,6 +91,8 @@ static void FinishUnregistrationOnIO(
     const ServiceWorkerContext::ResultCallback& continuation,
     ServiceWorkerStatusCode status) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  if (status != SERVICE_WORKER_OK)
+    LOG(ERROR) << ServiceWorkerStatusToString(status);
   BrowserThread::PostTask(
       BrowserThread::UI,
       FROM_HERE,
