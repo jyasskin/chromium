@@ -124,6 +124,7 @@ TEST_F(ServiceWorkerJobTest, SameDocumentSameRegistration) {
       GURL("http://www.example.com/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &original_registration));
   EXPECT_FALSE(called);
   base::RunLoop().RunUntilIdle();
@@ -151,6 +152,7 @@ TEST_F(ServiceWorkerJobTest, SameMatchSameRegistration) {
       GURL("http://www.example.com/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &original_registration));
   EXPECT_FALSE(called);
   base::RunLoop().RunUntilIdle();
@@ -182,6 +184,7 @@ TEST_F(ServiceWorkerJobTest, DifferentMatchDifferentRegistration) {
       GURL("http://www.example.com/one/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called1, &original_registration1));
 
   bool called2;
@@ -190,6 +193,7 @@ TEST_F(ServiceWorkerJobTest, DifferentMatchDifferentRegistration) {
       GURL("http://www.example.com/two/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called2, &original_registration2));
 
   EXPECT_FALSE(called1);
@@ -221,6 +225,7 @@ TEST_F(ServiceWorkerJobTest, Register) {
       GURL("http://www.example.com/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &registration));
 
   ASSERT_FALSE(called);
@@ -240,6 +245,7 @@ TEST_F(ServiceWorkerJobTest, Unregister) {
       pattern,
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &registration));
 
   ASSERT_FALSE(called);
@@ -293,6 +299,7 @@ TEST_F(ServiceWorkerJobTest, RegisterNewScript) {
       pattern,
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &old_registration));
 
   ASSERT_FALSE(called);
@@ -317,6 +324,7 @@ TEST_F(ServiceWorkerJobTest, RegisterNewScript) {
       pattern,
       GURL("http://www.example.com/service_worker_new.js"),
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &new_registration));
 
   ASSERT_FALSE(called);
@@ -352,6 +360,7 @@ TEST_F(ServiceWorkerJobTest, RegisterDuplicateScript) {
       pattern,
       script_url,
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &old_registration));
 
   ASSERT_FALSE(called);
@@ -374,6 +383,7 @@ TEST_F(ServiceWorkerJobTest, RegisterDuplicateScript) {
       pattern,
       script_url,
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &new_registration));
 
   ASSERT_FALSE(called);
@@ -445,6 +455,7 @@ TEST_F(ServiceWorkerJobTest, ParallelRegUnreg) {
       pattern,
       script_url,
       render_process_id_,
+      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &registration_called, &registration));
 
   bool unregistration_called = false;
@@ -483,6 +494,7 @@ TEST_F(ServiceWorkerJobTest, ParallelRegNewScript) {
       pattern,
       script_url1,
       render_process_id_,
+      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration1_called, &registration1));
 
@@ -493,6 +505,7 @@ TEST_F(ServiceWorkerJobTest, ParallelRegNewScript) {
       pattern,
       script_url2,
       render_process_id_,
+      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration2_called, &registration2));
 
@@ -527,6 +540,7 @@ TEST_F(ServiceWorkerJobTest, ParallelRegSameScript) {
       pattern,
       script_url,
       render_process_id_,
+      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration1_called, &registration1));
 
@@ -536,6 +550,7 @@ TEST_F(ServiceWorkerJobTest, ParallelRegSameScript) {
       pattern,
       script_url,
       render_process_id_,
+      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration2_called, &registration2));
 

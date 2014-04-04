@@ -108,7 +108,11 @@ class CONTENT_EXPORT ServiceWorkerVersion
 
   // Starts an embedded worker for this version.
   // This returns OK (success) if the worker is already running.
-  void StartWorker(const StatusCallback& callback);
+  // |potential_process_id| may be provided as a related process in which to
+  // start the worker.
+  void StartWorker(
+      const StatusCallback& callback,
+      const std::vector<int>& potential_process_ids = std::vector<int>());
 
   // Starts an embedded worker for this version.
   // This returns OK (success) if the worker is already stopped.

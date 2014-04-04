@@ -5,9 +5,11 @@
 #include "content/browser/service_worker/service_worker_context_wrapper.h"
 
 #include "base/files/file_path.h"
+#include "content/browser/renderer_host/render_process_host_impl.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
 #include "content/browser/service_worker/service_worker_context_observer.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/site_instance.h"
 #include "webkit/browser/quota/quota_manager_proxy.h"
 
 namespace content {
@@ -50,12 +52,66 @@ ServiceWorkerContextCore* ServiceWorkerContextWrapper::context() {
   return context_core_.get();
 }
 
+void ServiceWorkerContextWrapper::IncrementWorkerRef(
+    const std::vector<int>& process_ids,
+    const GURL& script_url,
+    const base::Callback<void(ServiceWorkerStatusCode, int process_id)>&
+        callback) const {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+  for (std::vector<int>::const_iterator it = process_ids.begin();
+       it != process_ids.end();
+       ++it) {
+    if (RenderProcessHost* rph = RenderProcessHost::FromID(*it)) {
+      static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
+      BrowserThread::PostTask(BrowserThread::IO,
+                              FROM_HERE,
+                              base::Bind(callback, SERVICE_WORKER_OK, *it));
+      return;
+    }
+  }
+
+  // No existing processes available; start a new one.
+  scoped_refptr<SiteInstance> site_instance =
+      SiteInstance::CreateForURL(browser_context_, script_url);
+  RenderProcessHost* rph = site_instance->GetProcess();
+  // This Init() call posts a task to the IO thread that adds the RPH's
+  // ServiceWorkerDispatcherHost to the
+  // EmbeddedWorkerRegistry::process_sender_map_.
+  if (!rph->Init()) {
+    LOG(ERROR) << "Couldn't start a new process!";
+    BrowserThread::PostTask(
+        BrowserThread::IO,
+        FROM_HERE,
+        base::Bind(callback, SERVICE_WORKER_ERROR_START_WORKER_FAILED, -1));
+    return;
+  }
+
+  static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
+  BrowserThread::PostTask(
+      BrowserThread::IO,
+      FROM_HERE,
+      base::Bind(callback, SERVICE_WORKER_OK, rph->GetID()));
+  return;
+}
+
+void ServiceWorkerContextWrapper::DecrementWorkerRef(int process_id) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
+  DCHECK(rph) << "DecrementWorkerRef(" << process_id
+              << ") doesn't match a previous IncrementWorkerRef";
+  if (rph)
+    static_cast<RenderProcessHostImpl*>(rph)->DecrementWorkerRefCount();
+}
+
 static void FinishRegistrationOnIO(
     const ServiceWorkerContext::ResultCallback& continuation,
     ServiceWorkerStatusCode status,
     int64 registration_id,
     int64 version_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  if (status != SERVICE_WORKER_OK)
+    LOG(ERROR) << ServiceWorkerStatusToString(status);
   BrowserThread::PostTask(
       BrowserThread::UI,
       FROM_HERE,
@@ -65,9 +121,15 @@ static void FinishRegistrationOnIO(
 void ServiceWorkerContextWrapper::RegisterServiceWorker(
     const GURL& pattern,
     const GURL& script_url,
-    int source_process_id,
+    BrowserContext* browser_context,
     const ResultCallback& continuation) {
-  if (!BrowserThread::CurrentlyOn(BrowserThread::IO)) {
+  if (BrowserThread::CurrentlyOn(BrowserThread::UI)) {
+    DCHECK(browser_context != NULL);
+    if (browser_context_ != NULL) {
+      DCHECK_EQ(browser_context_, browser_context)
+          << "|context| must be the BrowserContext containing *this.";
+    }
+    browser_context_ = browser_context;
     BrowserThread::PostTask(
         BrowserThread::IO,
         FROM_HERE,
@@ -75,15 +137,16 @@ void ServiceWorkerContextWrapper::RegisterServiceWorker(
                    this,
                    pattern,
                    script_url,
-                   source_process_id,
+                   browser_context,
                    continuation));
     return;
   }
+  DCHECK_CURRENTLY_ON(BrowserThread::IO);
 
   context()->RegisterServiceWorker(
       pattern,
       script_url,
-      source_process_id,
+      -1,
       NULL /* provider_host */,
       base::Bind(&FinishRegistrationOnIO, continuation));
 }
@@ -92,6 +155,8 @@ static void FinishUnregistrationOnIO(
     const ServiceWorkerContext::ResultCallback& continuation,
     ServiceWorkerStatusCode status) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  if (status != SERVICE_WORKER_OK)
+    LOG(ERROR) << ServiceWorkerStatusToString(status);
   BrowserThread::PostTask(
       BrowserThread::UI,
       FROM_HERE,

@@ -45,9 +45,12 @@ class ServiceWorkerRegisterJob : public ServiceWorkerRegisterJobBase {
   virtual ~ServiceWorkerRegisterJob();
 
   // Registers a callback to be called when the promise would resolve (whether
-  // successfully or not). Multiple callbacks may be registered. |process_id| is
-  // added via AddProcessToWorker to the ServiceWorkerVersion created by the
-  // registration job.
+  // successfully or not). Multiple callbacks may be registered. If |process_id|
+  // is not -1, it's used to create the Service Worker instance if there are no
+  // other clients.  If it is -1, the registration must have been started from
+  // ServiceWorkerContextWrapper::RegisterServiceWorker(browser_context), and
+  // that browser_context will be used to create a process if there are no
+  // existing clients.
   void AddCallback(const RegistrationCallback& callback, int process_id);
 
   // ServiceWorkerRegisterJobBase implementation:

@@ -22,6 +22,8 @@ class QuotaManagerProxy;
 
 namespace content {
 
+class BrowserContext;
+class ServiceWorkerContextCore;
 class ServiceWorkerContextObserver;
 
 // A refcounted wrapper class for our core object. Higher level content lib
@@ -43,13 +45,27 @@ class CONTENT_EXPORT ServiceWorkerContextWrapper
   // The core context is only for use on the IO thread.
   ServiceWorkerContextCore* context();
 
-  // ServiceWorkerContext implementation:
-  virtual void RegisterServiceWorker(const GURL& pattern,
-                                     const GURL& script_url,
-                                     int source_process_id,
-                                     const ResultCallback& continuation)
-      OVERRIDE;
+  // Call this on the UI thread to get a reference to a running process suitable
+  // for starting the Service Worker at |script_url|. Processes in |process_ids|
+  // will be checked in order for existence, and if none exist, then a new
+  // process will be created. Posts |callback| to the IO thread to indicate
+  // whether creation succeeded and the process ID that has a new reference.
+  void IncrementWorkerRef(
+      const std::vector<int>& process_ids,
+      const GURL& script_url,
+      const base::Callback<void(ServiceWorkerStatusCode, int process_id)>&
+          callback) const;
 
+  // Call this on the UI thread to drop a reference to a process that was
+  // running a Service Worker.  This must match a call to IncrementWorkerRef.
+  static void DecrementWorkerRef(int process_id);
+
+  // ServiceWorkerContext implementation:
+  virtual void RegisterServiceWorker(
+      const GURL& pattern,
+      const GURL& script_url,
+      BrowserContext* context,
+      const ResultCallback& continuation) OVERRIDE;
   virtual void UnregisterServiceWorker(const GURL& pattern,
                                        int source_process_id,
                                        const ResultCallback& continuation)
@@ -62,6 +78,7 @@ class CONTENT_EXPORT ServiceWorkerContextWrapper
   friend class base::RefCountedThreadSafe<ServiceWorkerContextWrapper>;
   virtual ~ServiceWorkerContextWrapper();
 
+  BrowserContext* browser_context_;  // UI thread-only; cleared in Shutdown().
   scoped_ptr<ServiceWorkerContextCore> context_core_;
   scoped_refptr<ObserverListThreadSafe<ServiceWorkerContextObserver> >
       observer_list_;
