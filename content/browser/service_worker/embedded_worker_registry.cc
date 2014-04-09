@@ -9,6 +9,9 @@
 #include "content/browser/service_worker/service_worker_context_core.h"
 #include "content/common/service_worker/embedded_worker_messages.h"
 #include "content/common/service_worker/service_worker_messages.h"
+#include "content/public/browser/browser_thread.h"
+#include "content/public/browser/render_process_host.h"
+#include "content/public/browser/site_instance.h"
 #include "ipc/ipc_message.h"
 #include "ipc/ipc_sender.h"
 
@@ -35,6 +38,48 @@ ServiceWorkerStatusCode EmbeddedWorkerRegistry::StartWorker(
               new EmbeddedWorkerMsg_StartWorker(embedded_worker_id,
                                                service_worker_version_id,
                                                script_url));
+}
+
+static EmbeddedWorkerRegistry::StatusCodeAndProcessId StartWorkerOnUI(
+    EmbeddedWorkerRegistry* registry,
+    SiteInstance* site_instance,
+    int embedded_worker_id,
+    int64 service_worker_version_id,
+    const GURL& script_url) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  scoped_refptr<SiteInstance> site_instance_for_script_url =
+      site_instance->GetRelatedSiteInstance(script_url);
+  EmbeddedWorkerRegistry::StatusCodeAndProcessId result;
+  result. status = SERVICE_WORKER_OK;
+  RenderProcessHost* process = site_instance_for_script_url->GetProcess();
+  if (!process->Send(
+          new EmbeddedWorkerMsg_StartWorker(
+              embedded_worker_id, service_worker_version_id, script_url)))
+    result.status = SERVICE_WORKER_ERROR_IPC_FAILED;
+  result.process_id = process->GetID();
+  return result;
+}
+
+void EmbeddedWorkerRegistry::StartWorker(SiteInstance* site_instance,
+                                         int embedded_worker_id,
+                                         int64 service_worker_version_id,
+                                         const GURL& script_url,
+                                         const StatusCallback& callback) {
+  AddRef();
+  base::Callback<StatusCodeAndProcessId()> step1 =
+      base::Bind(&StartWorkerOnUI,
+                 base::Unretained(this),
+                 base::Unretained(site_instance),
+                 embedded_worker_id,
+                 service_worker_version_id,
+                 script_url);
+  base::Callback<void(StatusCodeAndProcessId)> step2 =
+      base::Bind(&EmbeddedWorkerRegistry::RecordStartedProcessId,
+                 base::Unretained(this),
+                 embedded_worker_id,
+                 callback);
+  BrowserThread::PostTaskAndReplyWithResult(
+      BrowserThread::UI, FROM_HERE, step1, step2);
 }
 
 ServiceWorkerStatusCode EmbeddedWorkerRegistry::StopWorker(
@@ -121,6 +166,18 @@ EmbeddedWorkerInstance* EmbeddedWorkerRegistry::GetWorker(
 }
 
 EmbeddedWorkerRegistry::~EmbeddedWorkerRegistry() {}
+
+void EmbeddedWorkerRegistry::RecordStartedProcessId(
+    int embedded_worker_id,
+    const StatusCallback& callback,
+    StatusCodeAndProcessId result) {
+  DCHECK(ContainsKey(worker_map_, embedded_worker_id));
+  worker_map_[embedded_worker_id]->RecordStartedProcessId(result.process_id,
+                                                          result.status);
+  callback.Run(result.status);
+  // Matches the AddRef() in StartWorker(SiteInstance).
+  Release();
+}
 
 ServiceWorkerStatusCode EmbeddedWorkerRegistry::Send(
     int process_id, IPC::Message* message) {

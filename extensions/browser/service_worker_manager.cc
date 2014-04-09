@@ -65,44 +65,17 @@ void ServiceWorkerManager::RegisterExtension(const Extension* extension) {
   const GURL service_worker_script = extension->GetResourceURL(
       BackgroundInfo::GetServiceWorkerScript(extension));
 
+  extensions::ProcessManager* process_manager =
+      ExtensionSystem::Get(context_)->process_manager();
+
   GetSWContext(extension->id())->RegisterServiceWorker(
       extension->GetResourceURL("/*"),
       service_worker_script,
-      -1,  // host->render_process_host()->GetID(),
+      process_manager->GetSiteInstanceForURL(
+          service_worker_script),  // host->render_process_host()->GetID(),
       base::Bind(&ServiceWorkerManager::FinishRegistration,
                  WeakThis(),
                  extension->id()));
-  return;
-  // TODO(jyasskin): Create the extension process in a cleaner way. We don't
-  // need a view, for instance. Using the service_worker_script as the
-  // background host is just totally horrible.
-  extensions::ProcessManager* process_manager =
-      ExtensionSystem::Get(context_)->process_manager();
-  CHECK(process_manager->CreateBackgroundHost(
-      extension,
-      service_worker_script,
-      base::Bind(&ServiceWorkerManager::ContinueRegistrationWithExtensionHost,
-                 WeakThis(),
-                 extension->id(),
-                 extension->GetResourceURL("/*"),
-                 service_worker_script)));
-}
-
-void ServiceWorkerManager::ContinueRegistrationWithExtensionHost(
-    const ExtensionId& extension_id,
-    const GURL& scope,
-    const GURL& service_worker_script) {
-  extensions::ProcessManager* process_manager =
-      ExtensionSystem::Get(context_)->process_manager();
-  ExtensionHost* host =
-      process_manager->GetBackgroundHostForExtension(extension_id);
-
-  GetSWContext(extension_id)->RegisterServiceWorker(
-      scope,
-      service_worker_script,
-      host->render_process_host()->GetID(),
-      base::Bind(
-          &ServiceWorkerManager::FinishRegistration, WeakThis(), extension_id));
 }
 
 void ServiceWorkerManager::FinishRegistration(const ExtensionId& extension_id,

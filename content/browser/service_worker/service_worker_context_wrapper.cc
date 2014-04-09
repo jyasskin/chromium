@@ -7,6 +7,7 @@
 #include "base/files/file_path.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/site_instance.h"
 #include "webkit/browser/quota/quota_manager_proxy.h"
 
 namespace content {
@@ -68,6 +69,8 @@ void ServiceWorkerContextWrapper::RegisterServiceWorker(
     SiteInstance* site_instance,
     const ResultCallback& continuation) {
   if (!BrowserThread::CurrentlyOn(BrowserThread::IO)) {
+    DCHECK_CURRENTLY_ON(BrowserThread::UI);
+    site_instance->AddRef();
     BrowserThread::PostTask(
         BrowserThread::IO,
         FROM_HERE,
@@ -75,7 +78,7 @@ void ServiceWorkerContextWrapper::RegisterServiceWorker(
                    this,
                    pattern,
                    script_url,
-                   source_process_id,
+                   base::Unretained(site_instance),
                    continuation));
     return;
   }
@@ -83,7 +86,8 @@ void ServiceWorkerContextWrapper::RegisterServiceWorker(
   context()->RegisterServiceWorker(
       pattern,
       script_url,
-      source_process_id,
+      -1,
+      site_instance,
       base::Bind(&FinishRegistrationOnIO, continuation));
 }
 
