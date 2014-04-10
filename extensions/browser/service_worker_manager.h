@@ -69,8 +69,6 @@ class ServiceWorkerManager : public KeyedService {
       const ExtensionId& ext_id) const;
   inline base::WeakPtr<ServiceWorkerManager> WeakThis();
 
-  void ContinueUnregistrationWithExtensionHost(const ExtensionId& extension_id,
-                                               const GURL& scope);
   void FinishRegistration(const ExtensionId& extension_id,
                           bool success);
   void FinishUnregistration(const ExtensionId& extension_id,

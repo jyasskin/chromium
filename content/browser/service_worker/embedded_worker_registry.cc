@@ -12,6 +12,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/site_instance.h"
+#include "content/public/common/child_process_host.h"
 #include "ipc/ipc_message.h"
 #include "ipc/ipc_sender.h"
 
@@ -49,9 +50,14 @@ static EmbeddedWorkerRegistry::StatusCodeAndProcessId StartWorkerOnUI(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   scoped_refptr<SiteInstance> site_instance_for_script_url =
       site_instance->GetRelatedSiteInstance(script_url);
-  EmbeddedWorkerRegistry::StatusCodeAndProcessId result;
-  result. status = SERVICE_WORKER_OK;
+  EmbeddedWorkerRegistry::StatusCodeAndProcessId result = {
+      SERVICE_WORKER_OK, content::ChildProcessHost::kInvalidUniqueID};
   RenderProcessHost* process = site_instance_for_script_url->GetProcess();
+  if (!process->Init()) {
+    LOG(ERROR) << "Couldn't start a new process!";
+    result.status = SERVICE_WORKER_ERROR_START_WORKER_FAILED;
+    return result;
+  }
   if (!process->Send(
           new EmbeddedWorkerMsg_StartWorker(
               embedded_worker_id, service_worker_version_id, script_url)))
