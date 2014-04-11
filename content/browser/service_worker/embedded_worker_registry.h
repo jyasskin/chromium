@@ -64,6 +64,9 @@ class CONTENT_EXPORT EmbeddedWorkerRegistry
   ServiceWorkerStatusCode StopWorker(int process_id,
                                      int embedded_worker_id);
 
+  // Stop all active workers, even if they're handling events.
+  void Shutdown();
+
   // Called back from EmbeddedWorker in the child process, relayed via
   // ServiceWorkerDispatcherHost.
   void OnWorkerStarted(int process_id, int thread_id, int embedded_worker_id);
