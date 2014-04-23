@@ -23,7 +23,8 @@ class ServiceWorkerProviderHostTest : public testing::Test {
   virtual ~ServiceWorkerProviderHostTest() {}
 
   virtual void SetUp() OVERRIDE {
-    context_.reset(new ServiceWorkerContextCore(base::FilePath(), NULL, NULL));
+    context_.reset(
+        new ServiceWorkerContextCore(NULL, base::FilePath(), NULL, NULL));
 
     scope_ = GURL("http://www.example.com/*");
     script_url_ = GURL("http://www.example.com/service_worker.js");

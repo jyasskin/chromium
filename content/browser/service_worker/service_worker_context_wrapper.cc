@@ -4,7 +4,9 @@
 
 #include "content/browser/service_worker/service_worker_context_wrapper.h"
 
+#include "base/callback.h"
 #include "base/files/file_path.h"
+#include "base/lazy_instance.h"
 #include "content/browser/renderer_host/render_process_host_impl.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
 #include "content/browser/service_worker/service_worker_context_observer.h"
@@ -13,10 +15,38 @@
 #include "webkit/browser/quota/quota_manager_proxy.h"
 
 namespace content {
+namespace {
+base::LazyInstance<base::Callback<bool(int)> > s_increment_worker_refcount;
+base::LazyInstance<base::Callback<bool(int)> > s_decrement_worker_refcount;
+
+bool IncrementWorkerRefcountByPid(int process_id) {
+  if (!s_increment_worker_refcount.Get().is_null())
+    return s_increment_worker_refcount.Get().Run(process_id);
+
+  RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
+  if (rph)
+    static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
+
+  return rph;
+}
+
+bool DecrementWorkerRefcountByPid(int process_id) {
+  if (!s_decrement_worker_refcount.Get().is_null())
+    return s_decrement_worker_refcount.Get().Run(process_id);
+
+  RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
+  if (rph)
+    static_cast<RenderProcessHostImpl*>(rph)->DecrementWorkerRefCount();
+
+  return rph;
+}
+}  // namespace
 
 ServiceWorkerContextWrapper::ServiceWorkerContextWrapper()
-    : observer_list_(
-          new ObserverListThreadSafe<ServiceWorkerContextObserver>()) {}
+    : browser_context_(NULL),
+      observer_list_(
+          new ObserverListThreadSafe<ServiceWorkerContextObserver>()) {
+}
 
 ServiceWorkerContextWrapper::~ServiceWorkerContextWrapper() {
 }
@@ -34,7 +64,7 @@ void ServiceWorkerContextWrapper::Init(
   }
   DCHECK(!context_core_);
   context_core_.reset(new ServiceWorkerContextCore(
-      user_data_directory, quota_manager_proxy, observer_list_));
+      this, user_data_directory, quota_manager_proxy, observer_list_));
 }
 
 void ServiceWorkerContextWrapper::Shutdown() {
@@ -44,6 +74,7 @@ void ServiceWorkerContextWrapper::Shutdown() {
         base::Bind(&ServiceWorkerContextWrapper::Shutdown, this));
     return;
   }
+  // This breaks a reference cycle from Core::wrapper_ back to this object.
   context_core_.reset();
 }
 
@@ -62,13 +93,23 @@ void ServiceWorkerContextWrapper::IncrementWorkerRef(
   for (std::vector<int>::const_iterator it = process_ids.begin();
        it != process_ids.end();
        ++it) {
-    if (RenderProcessHost* rph = RenderProcessHost::FromID(*it)) {
-      static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
+    if (IncrementWorkerRefcountByPid(*it)){
       BrowserThread::PostTask(BrowserThread::IO,
                               FROM_HERE,
                               base::Bind(callback, SERVICE_WORKER_OK, *it));
       return;
     }
+  }
+
+  if (!browser_context_) {
+    // If all of the processes that requested a SW went away before it was
+    // created, we should just ignore the request.
+    LOG(ERROR) << "Couldn't start a new process!";
+    BrowserThread::PostTask(
+        BrowserThread::IO,
+        FROM_HERE,
+        base::Bind(callback, SERVICE_WORKER_ERROR_START_WORKER_FAILED, -1));
+    return;
   }
 
   // No existing processes available; start a new one.
@@ -92,16 +133,14 @@ void ServiceWorkerContextWrapper::IncrementWorkerRef(
       BrowserThread::IO,
       FROM_HERE,
       base::Bind(callback, SERVICE_WORKER_OK, rph->GetID()));
-  return;
 }
 
 void ServiceWorkerContextWrapper::DecrementWorkerRef(int process_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
-  DCHECK(rph) << "DecrementWorkerRef(" << process_id
-              << ") doesn't match a previous IncrementWorkerRef";
-  if (rph)
-    static_cast<RenderProcessHostImpl*>(rph)->DecrementWorkerRefCount();
+  if (!DecrementWorkerRefcountByPid(process_id)) {
+    DCHECK(false) << "DecrementWorkerRef(" << process_id
+                  << ") doesn't match a previous IncrementWorkerRef";
+  }
 }
 
 static void FinishRegistrationOnIO(
@@ -194,6 +233,13 @@ void ServiceWorkerContextWrapper::AddObserver(
 void ServiceWorkerContextWrapper::RemoveObserver(
     ServiceWorkerContextObserver* observer) {
   observer_list_->RemoveObserver(observer);
+}
+
+void ServiceWorkerContextWrapper::ResetWorkerRefCountOperationsForTest(
+    const base::Callback<bool(int)>& increment,
+    const base::Callback<bool(int)>& decrement) {
+  s_increment_worker_refcount.Get() = increment;
+  s_decrement_worker_refcount.Get() = decrement;
 }
 
 }  // namespace content

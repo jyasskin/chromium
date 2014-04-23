@@ -8,22 +8,32 @@
 #include "content/browser/service_worker/embedded_worker_instance.h"
 #include "content/browser/service_worker/embedded_worker_registry.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
+#include "content/browser/service_worker/service_worker_context_wrapper.h"
 #include "content/common/service_worker/embedded_worker_messages.h"
 #include "content/common/service_worker/service_worker_messages.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace content {
 
+static bool AlwaysTrue(int process_id) {
+  return true;
+}
+
 EmbeddedWorkerTestHelper::EmbeddedWorkerTestHelper(
-    ServiceWorkerContextCore* context,
     int mock_render_process_id)
-    : context_(context->AsWeakPtr()),
+    : wrapper_(new ServiceWorkerContextWrapper()),
       next_thread_id_(0),
       weak_factory_(this) {
+  wrapper_->Init(base::FilePath(), NULL);
   registry()->AddChildProcessSender(mock_render_process_id, this);
+  ServiceWorkerContextWrapper::ResetWorkerRefCountOperationsForTest(
+      base::Bind(AlwaysTrue), base::Bind(AlwaysTrue));
 }
 
 EmbeddedWorkerTestHelper::~EmbeddedWorkerTestHelper() {
+  ServiceWorkerContextWrapper::ResetWorkerRefCountOperationsForTest();
+  if (wrapper_)
+    wrapper_->Shutdown();
 }
 
 void EmbeddedWorkerTestHelper::SimulateAddProcessToWorker(
@@ -56,6 +66,15 @@ bool EmbeddedWorkerTestHelper::OnMessageReceived(const IPC::Message& message) {
   sink_.OnMessageReceived(message);
 
   return handled;
+}
+
+ServiceWorkerContextCore* EmbeddedWorkerTestHelper::context() {
+  return wrapper_->context();
+}
+
+void EmbeddedWorkerTestHelper::ShutdownContext() {
+  wrapper_->Shutdown();
+  wrapper_ = NULL;
 }
 
 void EmbeddedWorkerTestHelper::OnStartWorker(
@@ -223,8 +242,8 @@ void EmbeddedWorkerTestHelper::OnFetchEventStub(
 }
 
 EmbeddedWorkerRegistry* EmbeddedWorkerTestHelper::registry() {
-  DCHECK(context_);
-  return context_->embedded_worker_registry();
+  DCHECK(context());
+  return context()->embedded_worker_registry();
 }
 
 }  // namespace content

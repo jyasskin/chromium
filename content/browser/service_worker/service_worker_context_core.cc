@@ -8,6 +8,7 @@
 #include "base/strings/string_util.h"
 #include "content/browser/service_worker/embedded_worker_registry.h"
 #include "content/browser/service_worker/service_worker_context_observer.h"
+#include "content/browser/service_worker/service_worker_context_wrapper.h"
 #include "content/browser/service_worker/service_worker_info.h"
 #include "content/browser/service_worker/service_worker_job_coordinator.h"
 #include "content/browser/service_worker/service_worker_provider_host.h"
@@ -74,15 +75,18 @@ void ServiceWorkerContextCore::ProviderHostIterator::Initialize() {
 }
 
 ServiceWorkerContextCore::ServiceWorkerContextCore(
+    ServiceWorkerContextWrapper* wrapper,
     const base::FilePath& path,
     quota::QuotaManagerProxy* quota_manager_proxy,
     ObserverListThreadSafe<ServiceWorkerContextObserver>* observer_list)
-    : storage_(new ServiceWorkerStorage(
-          path, AsWeakPtr(), quota_manager_proxy)),
+    : wrapper_(wrapper),
+      storage_(
+          new ServiceWorkerStorage(path, AsWeakPtr(), quota_manager_proxy)),
       embedded_worker_registry_(new EmbeddedWorkerRegistry(AsWeakPtr())),
       job_coordinator_(new ServiceWorkerJobCoordinator(AsWeakPtr())),
       next_handle_id_(0),
-      observer_list_(observer_list) {}
+      observer_list_(observer_list) {
+}
 
 ServiceWorkerContextCore::~ServiceWorkerContextCore() {
   for (VersionMap::iterator it = live_versions_.begin();

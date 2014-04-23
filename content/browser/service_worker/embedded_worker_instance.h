@@ -113,9 +113,8 @@ class CONTENT_EXPORT EmbeddedWorkerInstance {
                          int embedded_worker_id);
 
   // Called back from EmbeddedWorkerRegistry after Start() passes control to the
-  // UI thread to create an entirely new process.
-  void RecordStartedProcessId(int process_id,
-                              ServiceWorkerStatusCode status);
+  // UI thread to acquire a reference to the process.
+  void RecordProcessId(int process_id, ServiceWorkerStatusCode status);
 
   // Called back from Registry when the worker instance has ack'ed that
   // its WorkerGlobalScope is actually started on |thread_id| in the
@@ -139,10 +138,10 @@ class CONTENT_EXPORT EmbeddedWorkerInstance {
                          int column_number,
                          const GURL& source_url);
 
-  // Chooses a process to start this worker and populate process_id_.  Uses
-  // |possible_process_id| if no process is available.
-  // Returns false when no process is available and |possible_process_id| is -1.
-  bool ChooseProcess(int possible_process_id);
+  // Chooses a list of processes to try to start this worker in, ordered by how
+  // many clients are currently in those processes.
+  std::vector<int> SortProcesses(
+      const std::vector<int>& possible_process_ids) const;
 
   scoped_refptr<EmbeddedWorkerRegistry> registry_;
   const int embedded_worker_id_;

@@ -34,6 +34,7 @@ namespace content {
 
 class EmbeddedWorkerRegistry;
 class ServiceWorkerContextObserver;
+class ServiceWorkerContextWrapper;
 class ServiceWorkerHandle;
 class ServiceWorkerJobCoordinator;
 class ServiceWorkerProviderHost;
@@ -84,6 +85,7 @@ class CONTENT_EXPORT ServiceWorkerContextCore
   // ServiceWorkerContextCore, the methods of ServiceWorkerContextObserver will
   // be called on the thread which called AddObserver() of |observer_list|.
   ServiceWorkerContextCore(
+      ServiceWorkerContextWrapper* wrapper,
       const base::FilePath& user_data_directory,
       quota::QuotaManagerProxy* quota_manager_proxy,
       ObserverListThreadSafe<ServiceWorkerContextObserver>* observer_list);
@@ -99,6 +101,7 @@ class CONTENT_EXPORT ServiceWorkerContextCore
                                int column_number,
                                const GURL& source_url) OVERRIDE;
 
+  ServiceWorkerContextWrapper* wrapper() { return wrapper_.get(); }
   ServiceWorkerStorage* storage() { return storage_.get(); }
   EmbeddedWorkerRegistry* embedded_worker_registry() {
     return embedded_worker_registry_.get();
@@ -157,6 +160,7 @@ class CONTENT_EXPORT ServiceWorkerContextCore
       ServiceWorkerRegistration* registration,
       ServiceWorkerVersion* version);
 
+  scoped_refptr<ServiceWorkerContextWrapper> wrapper_;
   ProcessToProviderMap providers_;
   scoped_ptr<ServiceWorkerStorage> storage_;
   scoped_refptr<EmbeddedWorkerRegistry> embedded_worker_registry_;

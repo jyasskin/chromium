@@ -9,6 +9,7 @@
 #include "content/browser/service_worker/embedded_worker_registry.h"
 #include "content/browser/service_worker/embedded_worker_test_helper.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
+#include "content/browser/service_worker/service_worker_context_wrapper.h"
 #include "content/common/service_worker/embedded_worker_messages.h"
 #include "content/public/test/test_browser_thread_bundle.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -23,25 +24,23 @@ class EmbeddedWorkerInstanceTest : public testing::Test {
       : thread_bundle_(TestBrowserThreadBundle::IO_MAINLOOP) {}
 
   virtual void SetUp() OVERRIDE {
-    context_.reset(new ServiceWorkerContextCore(base::FilePath(), NULL, NULL));
-    helper_.reset(new EmbeddedWorkerTestHelper(
-        context_.get(), kRenderProcessId));
+    helper_.reset(new EmbeddedWorkerTestHelper(kRenderProcessId));
   }
 
   virtual void TearDown() OVERRIDE {
     helper_.reset();
-    context_.reset();
   }
 
+  ServiceWorkerContextCore* context() { return helper_->context(); }
+
   EmbeddedWorkerRegistry* embedded_worker_registry() {
-    DCHECK(context_);
-    return context_->embedded_worker_registry();
+    DCHECK(context());
+    return context()->embedded_worker_registry();
   }
 
   IPC::TestSink* ipc_sink() { return helper_->ipc_sink(); }
 
   TestBrowserThreadBundle thread_bundle_;
-  scoped_ptr<ServiceWorkerContextCore> context_;
   scoped_ptr<EmbeddedWorkerTestHelper> helper_;
 
   DISALLOW_COPY_AND_ASSIGN(EmbeddedWorkerInstanceTest);
@@ -69,12 +68,14 @@ TEST_F(EmbeddedWorkerInstanceTest, StartAndStop) {
 
   // Start should succeed.
   ServiceWorkerStatusCode status;
+  base::RunLoop run_loop;
   worker->Start(
       service_worker_version_id,
       scope,
       url,
       std::vector<int>(),
-      base::Bind(&SaveStatusAndCall, &status, base::Bind(&base::DoNothing)));
+      base::Bind(&SaveStatusAndCall, &status, run_loop.QuitClosure()));
+  run_loop.Run();
   EXPECT_EQ(SERVICE_WORKER_OK, status);
   EXPECT_EQ(EmbeddedWorkerInstance::STARTING, worker->status());
   base::RunLoop().RunUntilIdle();
@@ -115,13 +116,15 @@ TEST_F(EmbeddedWorkerInstanceTest, ChooseProcess) {
 
   // Process 3 has the biggest # of references and it should be chosen.
   ServiceWorkerStatusCode status;
+  base::RunLoop run_loop;
   worker->Start(
       1L,
       GURL("http://example.com/*"),
       GURL("http://example.com/worker.js"),
       std::vector<int>(),
-      base::Bind(&SaveStatusAndCall, &status, base::Bind(&base::DoNothing)));
-  EXPECT_EQ(SERVICE_WORKER_OK, status);
+      base::Bind(&SaveStatusAndCall, &status, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(SERVICE_WORKER_OK, status) << ServiceWorkerStatusToString(status);
   EXPECT_EQ(EmbeddedWorkerInstance::STARTING, worker->status());
   EXPECT_EQ(3, worker->process_id());
 

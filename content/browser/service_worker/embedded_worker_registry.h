@@ -16,6 +16,7 @@
 #include "content/common/content_export.h"
 #include "content/common/service_worker/service_worker_status_code.h"
 
+class EmbeddedWorkerMsg_StartWorker;
 class GURL;
 
 namespace IPC {
@@ -38,12 +39,6 @@ class CONTENT_EXPORT EmbeddedWorkerRegistry
     : public NON_EXPORTED_BASE(base::RefCounted<EmbeddedWorkerRegistry>) {
  public:
   typedef base::Callback<void(ServiceWorkerStatusCode)> StatusCallback;
-  // Used in StartWorker(SiteInstance) to return the process ID from the UI
-  // thread.
-  struct StatusCodeAndProcessId {
-    ServiceWorkerStatusCode status;
-    int process_id;
-  };
 
   explicit EmbeddedWorkerRegistry(
       base::WeakPtr<ServiceWorkerContextCore> context);
@@ -53,14 +48,10 @@ class CONTENT_EXPORT EmbeddedWorkerRegistry
   scoped_ptr<EmbeddedWorkerInstance> CreateWorker();
 
   // Called from EmbeddedWorkerInstance, relayed to the child process.
-  ServiceWorkerStatusCode StartWorker(int process_id,
-                                      int embedded_worker_id,
-                                      int64 service_worker_version_id,
-                                      const GURL& scope,
-                                      const GURL& script_url);
-  void StartWorker(SiteInstance* site_instance,
+  void StartWorker(const std::vector<int>& process_ids,
                    int embedded_worker_id,
                    int64 service_worker_version_id,
+                   const GURL& scope,
                    const GURL& script_url,
                    const StatusCallback& callback);
   ServiceWorkerStatusCode StopWorker(int process_id,
@@ -100,9 +91,12 @@ class CONTENT_EXPORT EmbeddedWorkerRegistry
 
   ~EmbeddedWorkerRegistry();
 
-  void RecordStartedProcessId(int embedded_worker_id,
-                              const StatusCallback& callback,
-                              StatusCodeAndProcessId result);
+  void StartWorkerWithProcessId(
+      int embedded_worker_id,
+      scoped_ptr<EmbeddedWorkerMsg_StartWorker> message,
+      const StatusCallback& callback,
+      ServiceWorkerStatusCode status,
+      int process_id);
 
   ServiceWorkerStatusCode Send(int process_id, IPC::Message* message);
 

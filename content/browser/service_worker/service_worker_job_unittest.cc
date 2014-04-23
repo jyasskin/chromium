@@ -94,24 +94,22 @@ class ServiceWorkerJobTest : public testing::Test {
         render_process_id_(88) {}
 
   virtual void SetUp() OVERRIDE {
-    context_.reset(new ServiceWorkerContextCore(base::FilePath(), NULL, NULL));
-    helper_.reset(new EmbeddedWorkerTestHelper(context_.get(),
-                                               render_process_id_));
+    helper_.reset(new EmbeddedWorkerTestHelper(render_process_id_));
   }
 
   virtual void TearDown() OVERRIDE {
     helper_.reset();
-    context_.reset();
   }
 
+  ServiceWorkerContextCore* context() const { return helper_->context(); }
+
   ServiceWorkerJobCoordinator* job_coordinator() const {
-    return context_->job_coordinator();
+    return context()->job_coordinator();
   }
-  ServiceWorkerStorage* storage() const { return context_->storage(); }
+  ServiceWorkerStorage* storage() const { return context()->storage(); }
 
  protected:
   TestBrowserThreadBundle browser_thread_bundle_;
-  scoped_ptr<ServiceWorkerContextCore> context_;
   scoped_ptr<EmbeddedWorkerTestHelper> helper_;
 
   int render_process_id_;
@@ -124,7 +122,6 @@ TEST_F(ServiceWorkerJobTest, SameDocumentSameRegistration) {
       GURL("http://www.example.com/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &original_registration));
   EXPECT_FALSE(called);
   base::RunLoop().RunUntilIdle();
@@ -152,7 +149,6 @@ TEST_F(ServiceWorkerJobTest, SameMatchSameRegistration) {
       GURL("http://www.example.com/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &original_registration));
   EXPECT_FALSE(called);
   base::RunLoop().RunUntilIdle();
@@ -184,7 +180,6 @@ TEST_F(ServiceWorkerJobTest, DifferentMatchDifferentRegistration) {
       GURL("http://www.example.com/one/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called1, &original_registration1));
 
   bool called2;
@@ -193,7 +188,6 @@ TEST_F(ServiceWorkerJobTest, DifferentMatchDifferentRegistration) {
       GURL("http://www.example.com/two/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called2, &original_registration2));
 
   EXPECT_FALSE(called1);
@@ -225,7 +219,6 @@ TEST_F(ServiceWorkerJobTest, Register) {
       GURL("http://www.example.com/*"),
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &registration));
 
   ASSERT_FALSE(called);
@@ -245,7 +238,6 @@ TEST_F(ServiceWorkerJobTest, Unregister) {
       pattern,
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &registration));
 
   ASSERT_FALSE(called);
@@ -299,7 +291,6 @@ TEST_F(ServiceWorkerJobTest, RegisterNewScript) {
       pattern,
       GURL("http://www.example.com/service_worker.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &old_registration));
 
   ASSERT_FALSE(called);
@@ -324,7 +315,6 @@ TEST_F(ServiceWorkerJobTest, RegisterNewScript) {
       pattern,
       GURL("http://www.example.com/service_worker_new.js"),
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &new_registration));
 
   ASSERT_FALSE(called);
@@ -360,7 +350,6 @@ TEST_F(ServiceWorkerJobTest, RegisterDuplicateScript) {
       pattern,
       script_url,
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &old_registration));
 
   ASSERT_FALSE(called);
@@ -383,7 +372,6 @@ TEST_F(ServiceWorkerJobTest, RegisterDuplicateScript) {
       pattern,
       script_url,
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &called, &new_registration));
 
   ASSERT_FALSE(called);
@@ -409,9 +397,8 @@ TEST_F(ServiceWorkerJobTest, RegisterDuplicateScript) {
 
 class FailToStartWorkerTestHelper : public EmbeddedWorkerTestHelper {
  public:
-  FailToStartWorkerTestHelper(ServiceWorkerContextCore* context,
-                              int mock_render_process_id)
-      : EmbeddedWorkerTestHelper(context, mock_render_process_id) {}
+  FailToStartWorkerTestHelper(int mock_render_process_id)
+      : EmbeddedWorkerTestHelper(mock_render_process_id) {}
 
   virtual void OnStartWorker(int embedded_worker_id,
                              int64 service_worker_version_id,
@@ -424,8 +411,7 @@ class FailToStartWorkerTestHelper : public EmbeddedWorkerTestHelper {
 };
 
 TEST_F(ServiceWorkerJobTest, Register_FailToStartWorker) {
-  helper_.reset(
-      new FailToStartWorkerTestHelper(context_.get(), render_process_id_));
+  helper_.reset(new FailToStartWorkerTestHelper(render_process_id_));
 
   bool called = false;
   scoped_refptr<ServiceWorkerRegistration> registration;
@@ -455,7 +441,6 @@ TEST_F(ServiceWorkerJobTest, ParallelRegUnreg) {
       pattern,
       script_url,
       render_process_id_,
-      NULL,
       SaveRegistration(SERVICE_WORKER_OK, &registration_called, &registration));
 
   bool unregistration_called = false;
@@ -494,7 +479,6 @@ TEST_F(ServiceWorkerJobTest, ParallelRegNewScript) {
       pattern,
       script_url1,
       render_process_id_,
-      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration1_called, &registration1));
 
@@ -505,7 +489,6 @@ TEST_F(ServiceWorkerJobTest, ParallelRegNewScript) {
       pattern,
       script_url2,
       render_process_id_,
-      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration2_called, &registration2));
 
@@ -540,7 +523,6 @@ TEST_F(ServiceWorkerJobTest, ParallelRegSameScript) {
       pattern,
       script_url,
       render_process_id_,
-      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration1_called, &registration1));
 
@@ -550,7 +532,6 @@ TEST_F(ServiceWorkerJobTest, ParallelRegSameScript) {
       pattern,
       script_url,
       render_process_id_,
-      NULL,
       SaveRegistration(
           SERVICE_WORKER_OK, &registration2_called, &registration2));
 

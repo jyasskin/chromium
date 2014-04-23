@@ -50,6 +50,9 @@ class CONTENT_EXPORT ServiceWorkerContextWrapper
   // will be checked in order for existence, and if none exist, then a new
   // process will be created. Posts |callback| to the IO thread to indicate
   // whether creation succeeded and the process ID that has a new reference.
+  //
+  // Process creation can fail with SERVICE_WORKER_ERROR_START_WORKER_FAILED if
+  // RenderProcessHost::Init fails.
   void IncrementWorkerRef(
       const std::vector<int>& process_ids,
       const GURL& script_url,
@@ -73,6 +76,13 @@ class CONTENT_EXPORT ServiceWorkerContextWrapper
 
   void AddObserver(ServiceWorkerContextObserver* observer);
   void RemoveObserver(ServiceWorkerContextObserver* observer);
+
+  // These functions will be called on the UI thread, take a process ID to
+  // Increment/DecrementWorkerRefCount(), and should return whether the process
+  // existed. Null Callbacks reset the behavior to the default.
+  static void ResetWorkerRefCountOperationsForTest(
+      const base::Callback<bool(int)>& increment = base::Callback<bool(int)>(),
+      const base::Callback<bool(int)>& decrement = base::Callback<bool(int)>());
 
  private:
   friend class base::RefCountedThreadSafe<ServiceWorkerContextWrapper>;
