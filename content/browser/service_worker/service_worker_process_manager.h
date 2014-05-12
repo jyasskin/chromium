@@ -5,6 +5,7 @@
 #ifndef CONTENT_BROWSER_SERVICE_WORKER_SERVICE_WORKER_PROCESS_MANAGER_H_
 #define CONTENT_BROWSER_SERVICE_WORKER_SERVICE_WORKER_PROCESS_MANAGER_H_
 
+#include <map>
 #include <vector>
 
 #include "base/callback.h"
@@ -18,6 +19,7 @@ namespace content {
 
 class BrowserContext;
 class ServiceWorkerContextWrapper;
+class SiteInstance;
 
 // Interacts with the UI thread to keep RenderProcessHosts alive while the
 // ServiceWorker system is using them.  Each instance of
@@ -40,14 +42,18 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
   // Allocation can fail with SERVICE_WORKER_ERROR_START_WORKER_FAILED if
   // RenderProcessHost::Init fails.
   void AllocateWorkerProcess(
-      const std::vector<int>& process_ids,
+      int embedded_worker_id,
       const GURL& script_url,
       const base::Callback<void(ServiceWorkerStatusCode, int process_id)>&
-          callback) const;
+          callback);
 
-  // Drops a reference to a process that was running a Service Worker.  This
-  // must match a call to AllocateWorkerProcess.
-  void ReleaseWorkerProcess(int process_id);
+  // Indicates that the Service Worker system doesn't need the process for this
+  // instance anymore.  This come between a call to AllocateWorkerProcess and a
+  // call to InstanceStopped.
+  void InstanceWillStop(int embedded_worker_id);
+  // Forgets about the process of this worker instance, decrementing any
+  // remaining refcount, and dropping the saved SiteInstance.
+  void InstanceStopped(int embedded_worker_id);
 
   // |increment_for_test| and |decrement_for_test| define how to look up a
   // process by ID and increment or decrement its worker reference count. This
@@ -58,6 +64,22 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
       const base::Callback<bool(int)>& decrement_for_test);
 
  private:
+  // Information about the process for an EmbeddedWorkerInstance.
+  struct ProcessInfo {
+    ProcessInfo(const scoped_refptr<SiteInstance>& site_instance);
+    ~ProcessInfo();
+    // We try to drop the refcount on RenderProcessHost as soon as we know the
+    // Worker is going away, to let the Browser kill the child process early.
+    // We then have to double-check that the reference is gone when the Worker
+    // becomes stopped because workers can stop abruptly too.
+    bool has_reference;
+
+    // Stores the SiteInstance the Worker lives inside. This needs to outlive
+    // the instance's use of its RPH to uphold assumptions in the
+    // ContentBrowserClient interface.
+    scoped_refptr<SiteInstance> site_instance;
+  };
+
   bool IncrementWorkerRefcountByPid(int process_id) const;
   bool DecrementWorkerRefcountByPid(int process_id) const;
 
@@ -65,12 +87,22 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
   // The reference cycle through context_wrapper_ is broken in
   // ServiceWorkerContextWrapper::Shutdown().
   scoped_refptr<ServiceWorkerContextWrapper> context_wrapper_;
+
+  // Maps the ID of a running EmbeddedWorkerInstance to information about the
+  // process it's running inside. Since the Instances themselves live on the IO
+  // thread, this can be slightly out of date:
+  //  * instance_info_ is populated while an Instance is STARTING and before
+  //    it's RUNNING.
+  //  * instance_info_ is depopulated in a message sent as the Instance becomes
+  //    STOPPED.
+  std::map<int, ProcessInfo> instance_info_;
+
   base::Callback<bool(int)> increment_for_test_;
   base::Callback<bool(int)> decrement_for_test_;
 
   // Used to double-check that we don't access *this after it's destroyed.
   base::WeakPtrFactory<ServiceWorkerProcessManager> weak_this_factory_;
-  base::WeakPtr<ServiceWorkerProcessManager> weak_this_;
+  const base::WeakPtr<ServiceWorkerProcessManager> weak_this_;
 };
 
 }  // namespace content
