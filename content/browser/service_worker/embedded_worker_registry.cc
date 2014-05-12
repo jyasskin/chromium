@@ -47,7 +47,7 @@ void EmbeddedWorkerRegistry::StartWorker(const std::vector<int>& process_ids,
   params->script_url = script_url;
   params->worker_devtools_agent_route_id = MSG_ROUTING_NONE;
   context_->process_manager()->AllocateWorkerProcess(
-      process_ids,
+      embedded_worker_id,
       script_url,
       base::Bind(&EmbeddedWorkerRegistry::StartWorkerWithProcessId,
                  this,
@@ -59,7 +59,7 @@ void EmbeddedWorkerRegistry::StartWorker(const std::vector<int>& process_ids,
 ServiceWorkerStatusCode EmbeddedWorkerRegistry::StopWorker(
     int process_id, int embedded_worker_id) {
   if (context_)
-    context_->process_manager()->ReleaseWorkerProcess(process_id);
+    context_->process_manager()->InstanceWillStop(embedded_worker_id);
   return Send(process_id,
               new EmbeddedWorkerMsg_StopWorker(embedded_worker_id));
 }
@@ -142,6 +142,8 @@ void EmbeddedWorkerRegistry::OnWorkerStopped(
   }
   worker_process_map_[process_id].erase(embedded_worker_id);
   found->second->OnStopped();
+  if (context_)
+    context_->process_manager()->InstanceStopped(embedded_worker_id);
 }
 
 void EmbeddedWorkerRegistry::OnReportException(
@@ -222,7 +224,7 @@ void EmbeddedWorkerRegistry::StartWorkerWithProcessId(
     // The Instance was destroyed before it could finish starting.  Undo what
     // we've done so far.
     if (context_)
-      context_->process_manager()->ReleaseWorkerProcess(process_id);
+      context_->process_manager()->InstanceStopped(embedded_worker_id);
     callback.Run(SERVICE_WORKER_ERROR_ABORT);
     return;
   }
