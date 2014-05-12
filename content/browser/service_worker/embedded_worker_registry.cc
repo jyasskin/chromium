@@ -113,6 +113,8 @@ void EmbeddedWorkerRegistry::OnWorkerStopped(
   }
   worker_process_map_[process_id].erase(embedded_worker_id);
   found->second->OnStopped();
+  if (context_)
+    context_->process_manager()->InstanceStopped(embedded_worker_id);
 }
 
 void EmbeddedWorkerRegistry::OnReportException(
