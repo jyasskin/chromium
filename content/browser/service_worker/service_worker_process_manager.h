@@ -55,13 +55,14 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
   // remaining refcount, and dropping the saved SiteInstance.
   void InstanceStopped(int embedded_worker_id);
 
-  // |increment_for_test| and |decrement_for_test| define how to look up a
-  // process by ID and increment or decrement its worker reference count. This
-  // must be called before any reference to this object escapes to another
-  // thread, and is considered part of construction.
-  void SetProcessRefcountOpsForTest(
-      const base::Callback<bool(int)>& increment_for_test,
-      const base::Callback<bool(int)>& decrement_for_test);
+  // Sets a single process ID that will be used for all embedded workers.  This
+  // bypasses the work of creating a process and managing its worker refcount so
+  // that unittests can run without a BrowserContext.  The test is in charge of
+  // making sure this is only called on the same thread as runs the UI message
+  // loop.
+  void SetProcessIdForTest(int process_id) {
+    process_id_for_test_ = process_id;
+  }
 
  private:
   // Information about the process for an EmbeddedWorkerInstance.
@@ -80,9 +81,6 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
     scoped_refptr<SiteInstance> site_instance;
   };
 
-  bool IncrementWorkerRefcountByPid(int process_id) const;
-  bool DecrementWorkerRefcountByPid(int process_id) const;
-
   // These fields are only accessed on the UI thread after construction.
   // The reference cycle through context_wrapper_ is broken in
   // ServiceWorkerContextWrapper::Shutdown().
@@ -97,8 +95,9 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
   //    STOPPED.
   std::map<int, ProcessInfo> instance_info_;
 
-  base::Callback<bool(int)> increment_for_test_;
-  base::Callback<bool(int)> decrement_for_test_;
+  // In unit tests, this will be returned as the process for all
+  // EmbeddedWorkerInstances.
+  int process_id_for_test_;
 
   // Used to double-check that we don't access *this after it's destroyed.
   base::WeakPtrFactory<ServiceWorkerProcessManager> weak_this_factory_;
