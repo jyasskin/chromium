@@ -15,6 +15,7 @@ namespace content {
 ServiceWorkerProcessManager::ServiceWorkerProcessManager(
     ServiceWorkerContextWrapper* context_wrapper)
     : context_wrapper_(context_wrapper),
+      process_id_for_test_(-1),
       weak_this_factory_(this),
       weak_this_(weak_this_factory_.GetWeakPtr()) {
 }
@@ -37,6 +38,16 @@ void ServiceWorkerProcessManager::AllocateWorkerProcess(
                    embedded_worker_id,
                    script_url,
                    callback));
+    return;
+  }
+
+  if (process_id_for_test_ != -1) {
+    // Let tests specify the returned process ID.  Note: We may need to be able
+    // to specify the error code too.
+    BrowserThread::PostTask(
+        BrowserThread::IO,
+        FROM_HERE,
+        base::Bind(callback, SERVICE_WORKER_OK, process_id_for_test_));
     return;
   }
 
@@ -88,6 +99,11 @@ void ServiceWorkerProcessManager::InstanceWillStop(int embedded_worker_id) {
                    embedded_worker_id));
     return;
   }
+  if (process_id_for_test_ != -1) {
+    // Tests don't increment or decrement the worker refcount of a
+    // RenderProcessHost.
+    return;
+  }
   std::map<int, ProcessInfo>::iterator info =
       instance_info_.find(embedded_worker_id);
   DCHECK(info != instance_info_.end());
@@ -107,6 +123,11 @@ void ServiceWorkerProcessManager::InstanceStopped(int embedded_worker_id) {
                    embedded_worker_id));
     return;
   }
+  if (process_id_for_test_ != -1) {
+    // Tests don't increment or decrement the worker refcount of a
+    // RenderProcessHost.
+    return;
+  }
   std::map<int, ProcessInfo>::iterator info =
       instance_info_.find(embedded_worker_id);
   DCHECK(info != instance_info_.end());
@@ -116,39 +137,6 @@ void ServiceWorkerProcessManager::InstanceStopped(int embedded_worker_id) {
     info->second.has_reference = false;
   }
   instance_info_.erase(info);
-}
-
-void ServiceWorkerProcessManager::SetProcessRefcountOpsForTest(
-    const base::Callback<bool(int)>& increment_for_test,
-    const base::Callback<bool(int)>& decrement_for_test) {
-  increment_for_test_ = increment_for_test;
-  decrement_for_test_ = decrement_for_test;
-}
-
-bool ServiceWorkerProcessManager::IncrementWorkerRefcountByPid(
-    int process_id) const {
-  if (!increment_for_test_.is_null())
-    return increment_for_test_.Run(process_id);
-
-  RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
-  if (rph && !rph->FastShutdownStarted()) {
-    static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
-    return true;
-  }
-
-  return false;
-}
-
-bool ServiceWorkerProcessManager::DecrementWorkerRefcountByPid(
-    int process_id) const {
-  if (!decrement_for_test_.is_null())
-    return decrement_for_test_.Run(process_id);
-
-  RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
-  if (rph)
-    static_cast<RenderProcessHostImpl*>(rph)->DecrementWorkerRefCount();
-
-  return rph != NULL;
 }
 
 ServiceWorkerProcessManager::ProcessInfo::ProcessInfo(
