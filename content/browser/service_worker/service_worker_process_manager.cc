@@ -100,7 +100,7 @@ void ServiceWorkerProcessManager::InstanceWillStop(int embedded_worker_id) {
     return;
   }
   if (process_id_for_test_ != -1) {
-    // Tests don't increment or decrement the worker refcount of a
+    // Unittests don't increment or decrement the worker refcount of a
     // RenderProcessHost.
     return;
   }
@@ -124,7 +124,7 @@ void ServiceWorkerProcessManager::InstanceStopped(int embedded_worker_id) {
     return;
   }
   if (process_id_for_test_ != -1) {
-    // Tests don't increment or decrement the worker refcount of a
+    // Unittests don't increment or decrement the worker refcount of a
     // RenderProcessHost.
     return;
   }

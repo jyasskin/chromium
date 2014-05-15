@@ -48,7 +48,7 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
           callback);
 
   // Indicates that the Service Worker system doesn't need the process for this
-  // instance anymore.  This come between a call to AllocateWorkerProcess and a
+  // instance anymore.  This comes between a call to AllocateWorkerProcess and a
   // call to InstanceStopped.
   void InstanceWillStop(int embedded_worker_id);
   // Forgets about the process of this worker instance, decrementing any
