@@ -8,6 +8,7 @@
 #include "content/browser/service_worker/service_worker_context_wrapper.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/site_instance.h"
+#include "content/public/common/url_constants.h"
 #include "url/gurl.h"
 
 namespace content {
@@ -64,8 +65,10 @@ void ServiceWorkerProcessManager::AllocateWorkerProcess(
   }
 
   // Find a process for the Service Worker instance.
+  GURL service_worker_origin(std::string(kServiceWorkerScheme) + ":" +
+                             script_url.spec());
   scoped_refptr<SiteInstance> site_instance = SiteInstance::CreateForURL(
-      context_wrapper_->browser_context_, script_url);
+      context_wrapper_->browser_context_, service_worker_origin);
   RenderProcessHost* rph = site_instance->GetProcess();
   // This Init() call posts a task to the IO thread that adds the RPH's
   // ServiceWorkerDispatcherHost to the
