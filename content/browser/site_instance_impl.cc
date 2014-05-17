@@ -266,6 +266,15 @@ GURL SiteInstance::GetSiteForURL(BrowserContext* browser_context,
   if (real_url.SchemeIs(kGuestScheme))
     return real_url;
 
+  if (real_url.SchemeIs(kServiceWorkerScheme)) {
+    GURL contained_url(real_url.GetContent());
+    GURL contained_site(GetSiteForURL(browser_context, contained_url));
+    if (!contained_site.is_valid())
+      return contained_site;
+    return GURL(std::string(kServiceWorkerScheme) + ":" +
+                contained_site.spec());
+  }
+
   GURL url = SiteInstanceImpl::GetEffectiveURL(browser_context, real_url);
 
   // URLs with no host should have an empty site.

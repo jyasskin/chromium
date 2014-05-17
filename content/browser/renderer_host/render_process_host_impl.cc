@@ -1697,6 +1697,11 @@ bool RenderProcessHost::ShouldTryToUseExistingProcessHost(
   if (g_all_hosts.Get().size() >= GetMaxRendererProcessCount())
     return true;
 
+  // Service Workers try to share a process with an existing renderer on the
+  // same origin.
+  if (url.SchemeIs(kServiceWorkerScheme))
+    return true;
+
   return GetContentClient()->browser()->
       ShouldTryToUseExistingProcessHost(browser_context, url);
 }
@@ -1704,17 +1709,27 @@ bool RenderProcessHost::ShouldTryToUseExistingProcessHost(
 // static
 RenderProcessHost* RenderProcessHost::GetExistingProcessHost(
     BrowserContext* browser_context,
-    const GURL& site_url) {
+    const GURL& orig_site_url) {
   // First figure out which existing renderers we can use.
   std::vector<RenderProcessHost*> suitable_renderers;
   suitable_renderers.reserve(g_all_hosts.Get().size());
+
+  // Service Workers should share a process with another renderer from the same
+  // origin, if possible.
+  GURL munged_site_url;
+  const GURL* site_url = &orig_site_url;
+  if (orig_site_url.SchemeIs(kServiceWorkerScheme)) {
+    munged_site_url = GURL(orig_site_url.GetContent());
+    if (munged_site_url.is_valid())
+      site_url = &munged_site_url;
+  }
 
   iterator iter(AllHostsIterator());
   while (!iter.IsAtEnd()) {
     if (GetContentClient()->browser()->MayReuseHost(iter.GetCurrentValue()) &&
         RenderProcessHostImpl::IsSuitableHost(
             iter.GetCurrentValue(),
-            browser_context, site_url)) {
+            browser_context, *site_url)) {
       suitable_renderers.push_back(iter.GetCurrentValue());
     }
     iter.Advance();
