@@ -117,7 +117,7 @@ void EmbeddedWorkerInstance::Start(int64 service_worker_version_id,
   params->worker_devtools_agent_route_id = MSG_ROUTING_NONE;
   params->pause_on_start = false;
   context_->process_manager()->AllocateWorkerProcess(
-      SortProcesses(possible_process_ids),
+      embedded_worker_id_,
       script_url,
       base::Bind(&EmbeddedWorkerInstance::RunProcessAllocated,
                  weak_factory_.GetWeakPtr(),
@@ -129,7 +129,9 @@ void EmbeddedWorkerInstance::Start(int64 service_worker_version_id,
 ServiceWorkerStatusCode EmbeddedWorkerInstance::Stop() {
   DCHECK(status_ == STARTING || status_ == RUNNING);
   ServiceWorkerStatusCode status =
-      registry_->InstanceWillStop(embedded_worker_id_);
+      registry_->StopWorker(process_id_, embedded_worker_id_);
+  if (context_)
+    context_->process_manager()->InstanceWillStop(embedded_worker_id_);
   if (status == SERVICE_WORKER_OK)
     status_ = STOPPING;
   return status;
@@ -186,7 +188,7 @@ void EmbeddedWorkerInstance::RunProcessAllocated(
     return;
   }
   if (!instance) {
-    context->process_manager()->InstanceStopped(embedded_worker_id_);
+    context->process_manager()->InstanceStopped(instance->embedded_worker_id_);
     callback.Run(SERVICE_WORKER_ERROR_ABORT);
     return;
   }
