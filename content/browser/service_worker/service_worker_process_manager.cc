@@ -12,15 +12,14 @@
 
 namespace content {
 
-static bool IncrementWorkerRefcountByPid(
+static bool IncrementWorkerRefCountByPid(
     int process_id) {
   RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
-  if (rph && !rph->FastShutdownStarted()) {
-    static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
-    return true;
-  }
+  if (!rph || rph->FastShutdownStarted())
+    return false;
 
-  return false;
+  static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
+  return true;
 }
 
 ServiceWorkerProcessManager::ServiceWorkerProcessManager(
@@ -55,7 +54,7 @@ void ServiceWorkerProcessManager::AllocateWorkerProcess(
   }
 
   if (process_id_for_test_ != -1) {
-    // Let tests specify the returned process ID.  Note: We may need to be able
+    // Let tests specify the returned process ID. Note: We may need to be able
     // to specify the error code too.
     BrowserThread::PostTask(
         BrowserThread::IO,
@@ -70,7 +69,7 @@ void ServiceWorkerProcessManager::AllocateWorkerProcess(
   for (std::vector<int>::const_iterator it = process_ids.begin();
        it != process_ids.end();
        ++it) {
-    if (IncrementWorkerRefcountByPid(*it)) {
+    if (IncrementWorkerRefCountByPid(*it)) {
       instance_info_.insert(
           std::make_pair(embedded_worker_id, ProcessInfo(*it)));
       BrowserThread::PostTask(BrowserThread::IO,

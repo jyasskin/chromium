@@ -660,7 +660,7 @@ IN_PROC_BROWSER_TEST_F(ServiceWorkerBlackBoxBrowserTest, Registration) {
                    run_loop.QuitClosure()));
     run_loop.Run();
   }
-  EXPECT_LE(CountRenderProcessHosts(), 1) << "Unregistering doesn't stop the "
+  EXPECT_GE(1, CountRenderProcessHosts()) << "Unregistering doesn't stop the "
                                              "workers eagerly, so their RPHs "
                                              "can still be running.";
 
