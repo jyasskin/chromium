@@ -89,12 +89,12 @@ void ServiceWorkerProcessManager::AllocateWorkerProcess(
       base::Bind(callback, SERVICE_WORKER_OK, rph->GetID()));
 }
 
-void ServiceWorkerProcessManager::InstanceWillStop(int embedded_worker_id) {
+void ServiceWorkerProcessManager::ReleaseWorkerProcess(int embedded_worker_id) {
   if (!BrowserThread::CurrentlyOn(BrowserThread::UI)) {
     BrowserThread::PostTask(
         BrowserThread::UI,
         FROM_HERE,
-        base::Bind(&ServiceWorkerProcessManager::InstanceWillStop,
+        base::Bind(&ServiceWorkerProcessManager::ReleaseWorkerProcess,
                    weak_this_,
                    embedded_worker_id));
     return;
@@ -107,41 +107,14 @@ void ServiceWorkerProcessManager::InstanceWillStop(int embedded_worker_id) {
   std::map<int, ProcessInfo>::iterator info =
       instance_info_.find(embedded_worker_id);
   DCHECK(info != instance_info_.end());
-  DCHECK(info->second.has_reference);
   RenderProcessHost* rph = info->second.site_instance->GetProcess();
   static_cast<RenderProcessHostImpl*>(rph)->DecrementWorkerRefCount();
-  info->second.has_reference = false;
-}
-
-void ServiceWorkerProcessManager::InstanceStopped(int embedded_worker_id) {
-  if (!BrowserThread::CurrentlyOn(BrowserThread::UI)) {
-    BrowserThread::PostTask(
-        BrowserThread::UI,
-        FROM_HERE,
-        base::Bind(&ServiceWorkerProcessManager::InstanceStopped,
-                   weak_this_,
-                   embedded_worker_id));
-    return;
-  }
-  if (process_id_for_test_ != -1) {
-    // Unittests don't increment or decrement the worker refcount of a
-    // RenderProcessHost.
-    return;
-  }
-  std::map<int, ProcessInfo>::iterator info =
-      instance_info_.find(embedded_worker_id);
-  DCHECK(info != instance_info_.end());
-  if (info->second.has_reference) {
-    RenderProcessHost* rph = info->second.site_instance->GetProcess();
-    static_cast<RenderProcessHostImpl*>(rph)->DecrementWorkerRefCount();
-    info->second.has_reference = false;
-  }
   instance_info_.erase(info);
 }
 
 ServiceWorkerProcessManager::ProcessInfo::ProcessInfo(
     const scoped_refptr<SiteInstance>& site_instance)
-    : has_reference(true), site_instance(site_instance) {
+    : site_instance(site_instance) {
 }
 ServiceWorkerProcessManager::ProcessInfo::~ProcessInfo() {
 }
