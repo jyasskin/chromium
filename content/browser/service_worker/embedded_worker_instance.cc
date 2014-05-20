@@ -118,6 +118,7 @@ void EmbeddedWorkerInstance::Start(int64 service_worker_version_id,
   params->pause_on_start = false;
   context_->process_manager()->AllocateWorkerProcess(
       embedded_worker_id_,
+      SortProcesses(possible_process_ids),
       script_url,
       base::Bind(&EmbeddedWorkerInstance::RunProcessAllocated,
                  weak_factory_.GetWeakPtr(),

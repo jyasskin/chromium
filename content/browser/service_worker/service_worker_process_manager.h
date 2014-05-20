@@ -34,13 +34,16 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
   ~ServiceWorkerProcessManager();
 
   // Returns a reference to a running process suitable for starting the Service
-  // Worker at |script_url|. Posts |callback| to the IO thread to indicate
-  // whether creation succeeded and the process ID that has a new reference.
+  // Worker at |script_url|. Processes in |process_ids| will be checked in order
+  // for existence, and if none exist, then a new process will be created. Posts
+  // |callback| to the IO thread to indicate whether creation succeeded and the
+  // process ID that has a new reference.
   //
   // Allocation can fail with SERVICE_WORKER_ERROR_START_WORKER_FAILED if
   // RenderProcessHost::Init fails.
   void AllocateWorkerProcess(
       int embedded_worker_id,
+      const std::vector<int>& process_ids,
       const GURL& script_url,
       const base::Callback<void(ServiceWorkerStatusCode, int process_id)>&
           callback);
@@ -62,12 +65,19 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
   // Information about the process for an EmbeddedWorkerInstance.
   struct ProcessInfo {
     explicit ProcessInfo(const scoped_refptr<SiteInstance>& site_instance);
+    explicit ProcessInfo(int process_id);
     ~ProcessInfo();
 
     // Stores the SiteInstance the Worker lives inside. This needs to outlive
     // the instance's use of its RPH to uphold assumptions in the
     // ContentBrowserClient interface.
     scoped_refptr<SiteInstance> site_instance;
+
+    // In case the process was allocated without using a SiteInstance, we need
+    // to store a process ID to decrement a worker reference on shutdown.
+    // TODO(jyasskin): Implement http://crbug.com/372045 or thread a frame_id in
+    // so all processes can be allocated with a SiteInstance.
+    int process_id;
   };
 
   // These fields are only accessed on the UI thread after construction.
