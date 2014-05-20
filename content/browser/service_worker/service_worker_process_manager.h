@@ -34,10 +34,8 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
   ~ServiceWorkerProcessManager();
 
   // Returns a reference to a running process suitable for starting the Service
-  // Worker at |script_url|. Processes in |process_ids| will be checked in order
-  // for existence, and if none exist, then a new process will be created. Posts
-  // |callback| to the IO thread to indicate whether creation succeeded and the
-  // process ID that has a new reference.
+  // Worker at |script_url|. Posts |callback| to the IO thread to indicate
+  // whether creation succeeded and the process ID that has a new reference.
   //
   // Allocation can fail with SERVICE_WORKER_ERROR_START_WORKER_FAILED if
   // RenderProcessHost::Init fails.
@@ -47,13 +45,9 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
       const base::Callback<void(ServiceWorkerStatusCode, int process_id)>&
           callback);
 
-  // Indicates that the Service Worker system doesn't need the process for this
-  // instance anymore.  This comes between a call to AllocateWorkerProcess and a
-  // call to InstanceStopped.
-  void InstanceWillStop(int embedded_worker_id);
-  // Forgets about the process of this worker instance, decrementing any
-  // remaining refcount, and dropping the saved SiteInstance.
-  void InstanceStopped(int embedded_worker_id);
+  // Drops a reference to a process that was running a Service Worker, and its
+  // SiteInstance.  This must match a call to AllocateWorkerProcess.
+  void ReleaseWorkerProcess(int embedded_worker_id);
 
   // Sets a single process ID that will be used for all embedded workers.  This
   // bypasses the work of creating a process and managing its worker refcount so
@@ -67,13 +61,8 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
  private:
   // Information about the process for an EmbeddedWorkerInstance.
   struct ProcessInfo {
-    ProcessInfo(const scoped_refptr<SiteInstance>& site_instance);
+    explicit ProcessInfo(const scoped_refptr<SiteInstance>& site_instance);
     ~ProcessInfo();
-    // We try to drop the refcount on RenderProcessHost as soon as we know the
-    // Worker is going away, to let the Browser kill the child process early.
-    // We then have to double-check that the reference is gone when the Worker
-    // becomes stopped because workers can stop abruptly too.
-    bool has_reference;
 
     // Stores the SiteInstance the Worker lives inside. This needs to outlive
     // the instance's use of its RPH to uphold assumptions in the
