@@ -12,14 +12,26 @@
 
 namespace content {
 
-static bool IncrementWorkerRefCountByPid(
-    int process_id) {
+static bool IncrementWorkerRefCountByPid(int process_id) {
   RenderProcessHost* rph = RenderProcessHost::FromID(process_id);
   if (!rph || rph->FastShutdownStarted())
     return false;
 
   static_cast<RenderProcessHostImpl*>(rph)->IncrementWorkerRefCount();
   return true;
+}
+
+ServiceWorkerProcessManager::ProcessInfo::ProcessInfo(
+    const scoped_refptr<SiteInstance>& site_instance)
+    : site_instance(site_instance),
+      process_id(site_instance->GetProcess()->GetID()) {
+}
+
+ServiceWorkerProcessManager::ProcessInfo::ProcessInfo(int process_id)
+    : process_id(process_id) {
+}
+
+ServiceWorkerProcessManager::ProcessInfo::~ProcessInfo() {
 }
 
 ServiceWorkerProcessManager::ServiceWorkerProcessManager(
@@ -145,17 +157,6 @@ void ServiceWorkerProcessManager::ReleaseWorkerProcess(int embedded_worker_id) {
   }
   static_cast<RenderProcessHostImpl*>(rph)->DecrementWorkerRefCount();
   instance_info_.erase(info);
-}
-
-ServiceWorkerProcessManager::ProcessInfo::ProcessInfo(
-    const scoped_refptr<SiteInstance>& site_instance)
-    : site_instance(site_instance),
-      process_id(site_instance->GetProcess()->GetID()) {
-}
-ServiceWorkerProcessManager::ProcessInfo::ProcessInfo(int process_id)
-    : process_id(process_id) {
-}
-ServiceWorkerProcessManager::ProcessInfo::~ProcessInfo() {
 }
 
 }  // namespace content

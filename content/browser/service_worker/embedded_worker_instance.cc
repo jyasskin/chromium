@@ -187,8 +187,11 @@ void EmbeddedWorkerInstance::RunProcessAllocated(
     return;
   }
   if (!instance) {
-    context->process_manager()->ReleaseWorkerProcess(
-        instance->embedded_worker_id_);
+    if (status == SERVICE_WORKER_OK) {
+      // We only have a process allocated if the status is OK.
+      context->process_manager()->ReleaseWorkerProcess(
+          params->embedded_worker_id);
+    }
     callback.Run(SERVICE_WORKER_ERROR_ABORT);
     return;
   }
