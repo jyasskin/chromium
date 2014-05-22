@@ -104,4 +104,12 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
 
 }  // namespace content
 
+namespace base {
+// Specialized to post the deletion to the UI thread.
+template <>
+struct CONTENT_EXPORT DefaultDeleter<content::ServiceWorkerProcessManager> {
+  void operator()(content::ServiceWorkerProcessManager* ptr) const;
+};
+}  // namespace base
+
 #endif  // CONTENT_BROWSER_SERVICE_WORKER_SERVICE_WORKER_PROCESS_MANAGER_H_

@@ -163,3 +163,14 @@ void ServiceWorkerProcessManager::ReleaseWorkerProcess(int embedded_worker_id) {
 }
 
 }  // namespace content
+
+namespace base {
+// Destroying ServiceWorkerProcessManagers only on the UI thread allows the
+// member WeakPtr to safely guard the object's lifetime when used on that
+// thread.
+void DefaultDeleter<content::ServiceWorkerProcessManager>::operator()(
+    content::ServiceWorkerProcessManager* ptr) const {
+  content::BrowserThread::DeleteSoon(
+      content::BrowserThread::UI, FROM_HERE, ptr);
+}
+}  // namespace base
