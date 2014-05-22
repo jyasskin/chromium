@@ -48,6 +48,7 @@ ServiceWorkerProcessManager::~ServiceWorkerProcessManager() {
       << "Call Shutdown() before destroying |this|, so that racing method "
       << "invocations don't use a destroyed BrowserContext.";
 }
+
 void ServiceWorkerProcessManager::Shutdown() {
   browser_context_ = NULL;
 }
