@@ -8,7 +8,6 @@
 #include "content/browser/devtools/embedded_worker_devtools_manager.h"
 #include "content/browser/service_worker/embedded_worker_registry.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
-#include "content/browser/service_worker/service_worker_context_wrapper.h"
 #include "content/common/service_worker/embedded_worker_messages.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_process_host.h"
@@ -93,9 +92,8 @@ EmbeddedWorkerInstance::~EmbeddedWorkerInstance() {
     Stop();
   if (worker_devtools_agent_route_id_ != MSG_ROUTING_NONE)
     NotifyWorkerDestroyed(process_id_, worker_devtools_agent_route_id_);
-  if (context_ && process_id_ != -1) {
+  if (context_ && process_id_ != -1)
     context_->process_manager()->ReleaseWorkerProcess(embedded_worker_id_);
-  }
   registry_->RemoveWorker(process_id_, embedded_worker_id_);
 }
 
@@ -255,9 +253,8 @@ void EmbeddedWorkerInstance::OnStarted(int thread_id) {
 void EmbeddedWorkerInstance::OnStopped() {
   if (worker_devtools_agent_route_id_ != MSG_ROUTING_NONE)
     NotifyWorkerDestroyed(process_id_, worker_devtools_agent_route_id_);
-  if (context_) {
+  if (context_)
     context_->process_manager()->ReleaseWorkerProcess(embedded_worker_id_);
-  }
   status_ = STOPPED;
   process_id_ = -1;
   thread_id_ = -1;
