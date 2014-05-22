@@ -78,6 +78,7 @@ class CONTENT_EXPORT ServiceWorkerContextWrapper
                     base::SequencedTaskRunner* database_task_runner,
                     base::MessageLoopProxy* disk_cache_thread,
                     quota::QuotaManagerProxy* quota_manager_proxy);
+  void ShutdownOnIO();
 
   const scoped_refptr<ObserverListThreadSafe<ServiceWorkerContextObserver> >
       observer_list_;

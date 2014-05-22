@@ -21,13 +21,16 @@ class BrowserContext;
 class SiteInstance;
 
 // Interacts with the UI thread to keep RenderProcessHosts alive while the
-// ServiceWorker system is using them.
+// ServiceWorker system is using them. Each instance of
+// ServiceWorkerProcessManager is destroyed on the UI thread shortly after its
+// ServiceWorkerContextWrapper is destroyed.
 class CONTENT_EXPORT ServiceWorkerProcessManager {
  public:
   // |*this| must be owned by a ServiceWorkerContextWrapper in a
   // StoragePartition within |browser_context|.
   explicit ServiceWorkerProcessManager(BrowserContext* browser_context);
 
+  // Shutdown must be called before the ProcessManager is destroyed.
   ~ServiceWorkerProcessManager();
 
   // Synchronously prevents new processes from being allocated.

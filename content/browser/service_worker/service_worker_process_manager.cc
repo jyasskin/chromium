@@ -44,6 +44,9 @@ ServiceWorkerProcessManager::ServiceWorkerProcessManager(
 
 ServiceWorkerProcessManager::~ServiceWorkerProcessManager() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  DCHECK(browser_context_ == NULL)
+      << "Call Shutdown() before destroying |this|, so that racing method "
+      << "invocations don't use a destroyed BrowserContext.";
 }
 void ServiceWorkerProcessManager::Shutdown() {
   browser_context_ = NULL;

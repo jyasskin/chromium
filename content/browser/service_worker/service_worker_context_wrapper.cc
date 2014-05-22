@@ -39,15 +39,12 @@ void ServiceWorkerContextWrapper::Init(
 }
 
 void ServiceWorkerContextWrapper::Shutdown() {
-  if (!BrowserThread::CurrentlyOn(BrowserThread::IO)) {
-    DCHECK_CURRENTLY_ON(BrowserThread::UI);
-    process_manager_->Shutdown();
-    BrowserThread::PostTask(
-        BrowserThread::IO, FROM_HERE,
-        base::Bind(&ServiceWorkerContextWrapper::Shutdown, this));
-    return;
-  }
-  context_core_.reset();
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  process_manager_->Shutdown();
+  BrowserThread::PostTask(
+      BrowserThread::IO,
+      FROM_HERE,
+      base::Bind(&ServiceWorkerContextWrapper::ShutdownOnIO, this));
 }
 
 ServiceWorkerContextCore* ServiceWorkerContextWrapper::context() {
@@ -154,6 +151,11 @@ void ServiceWorkerContextWrapper::InitInternal(
                                                    quota_manager_proxy,
                                                    observer_list_,
                                                    this));
+}
+
+void ServiceWorkerContextWrapper::ShutdownOnIO() {
+  DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  context_core_.reset();
 }
 
 }  // namespace content
