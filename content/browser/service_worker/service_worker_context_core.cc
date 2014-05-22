@@ -309,4 +309,8 @@ void ServiceWorkerContextCore::OnReportConsoleMessage(
           source_identifier, message_level, message, line_number, source_url));
 }
 
+ServiceWorkerProcessManager* ServiceWorkerContextCore::process_manager() {
+  return wrapper_->process_manager();
+}
+
 }  // namespace content

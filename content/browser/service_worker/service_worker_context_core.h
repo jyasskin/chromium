@@ -15,6 +15,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list_threadsafe.h"
 #include "content/browser/service_worker/service_worker_info.h"
+#include "content/browser/service_worker/service_worker_process_manager.h"
 #include "content/browser/service_worker/service_worker_provider_host.h"
 #include "content/browser/service_worker/service_worker_registration_status.h"
 #include "content/browser/service_worker/service_worker_storage.h"
@@ -110,8 +111,8 @@ class CONTENT_EXPORT ServiceWorkerContextCore
                                       int line_number,
                                       const GURL& source_url) OVERRIDE;
 
-  ServiceWorkerContextWrapper* wrapper() { return wrapper_; }
   ServiceWorkerStorage* storage() { return storage_.get(); }
+  ServiceWorkerProcessManager* process_manager();
   EmbeddedWorkerRegistry* embedded_worker_registry() {
     return embedded_worker_registry_.get();
   }

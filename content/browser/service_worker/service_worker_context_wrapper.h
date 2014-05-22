@@ -11,7 +11,6 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
-#include "content/browser/service_worker/service_worker_process_manager.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/service_worker_context.h"
 
@@ -30,7 +29,6 @@ namespace content {
 class BrowserContext;
 class ServiceWorkerContextCore;
 class ServiceWorkerContextObserver;
-class ServiceWorkerProcessManager;
 
 // A refcounted wrapper class for our core object. Higher level content lib
 // classes keep references to this class on mutliple threads. The inner core
