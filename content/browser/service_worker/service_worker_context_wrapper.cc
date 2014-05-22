@@ -18,7 +18,7 @@ ServiceWorkerContextWrapper::ServiceWorkerContextWrapper(
     BrowserContext* browser_context)
     : observer_list_(
           new ObserverListThreadSafe<ServiceWorkerContextObserver>()),
-      browser_context_(browser_context) {
+      process_manager_(new ServiceWorkerProcessManager(browser_context)) {
 }
 
 ServiceWorkerContextWrapper::~ServiceWorkerContextWrapper() {
@@ -41,13 +41,12 @@ void ServiceWorkerContextWrapper::Init(
 void ServiceWorkerContextWrapper::Shutdown() {
   if (!BrowserThread::CurrentlyOn(BrowserThread::IO)) {
     DCHECK_CURRENTLY_ON(BrowserThread::UI);
-    browser_context_ = NULL;
+    process_manager_->Shutdown();
     BrowserThread::PostTask(
         BrowserThread::IO, FROM_HERE,
         base::Bind(&ServiceWorkerContextWrapper::Shutdown, this));
     return;
   }
-  // Breaks the reference cycle through ServiceWorkerProcessManager.
   context_core_.reset();
 }
 
@@ -149,13 +148,12 @@ void ServiceWorkerContextWrapper::InitInternal(
     return;
   }
   DCHECK(!context_core_);
-  context_core_.reset(new ServiceWorkerContextCore(
-      user_data_directory,
-      database_task_runner,
-      disk_cache_thread,
-      quota_manager_proxy,
-      observer_list_,
-      make_scoped_ptr(new ServiceWorkerProcessManager(this))));
+  context_core_.reset(new ServiceWorkerContextCore(user_data_directory,
+                                                   database_task_runner,
+                                                   disk_cache_thread,
+                                                   quota_manager_proxy,
+                                                   observer_list_,
+                                                   this));
 }
 
 }  // namespace content

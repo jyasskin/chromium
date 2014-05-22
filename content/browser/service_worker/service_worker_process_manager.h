@@ -18,20 +18,21 @@ class GURL;
 namespace content {
 
 class BrowserContext;
-class ServiceWorkerContextWrapper;
 class SiteInstance;
 
 // Interacts with the UI thread to keep RenderProcessHosts alive while the
-// ServiceWorker system is using them.  Each instance of
-// ServiceWorkerProcessManager is destroyed on the UI thread shortly after its
-// ServiceWorkerContextCore is destroyed on the IO thread.
+// ServiceWorker system is using them.
 class CONTENT_EXPORT ServiceWorkerProcessManager {
  public:
-  // |*this| must be owned by |context_wrapper|->context().
-  explicit ServiceWorkerProcessManager(
-      ServiceWorkerContextWrapper* context_wrapper);
+  // |*this| must be owned by a ServiceWorkerContextWrapper in a
+  // StoragePartition within |browser_context|.
+  explicit ServiceWorkerProcessManager(BrowserContext* browser_context);
 
   ~ServiceWorkerProcessManager();
+
+  // Synchronously prevents new processes from being allocated.
+  // TODO(jyasskin): Drop references to RenderProcessHosts too.
+  void Shutdown();
 
   // Returns a reference to a running process suitable for starting the Service
   // Worker at |script_url|. Processes in |process_ids| will be checked in order
@@ -80,10 +81,8 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
     int process_id;
   };
 
-  // These fields are only accessed on the UI thread after construction.
-  // The reference cycle through context_wrapper_ is broken in
-  // ServiceWorkerContextWrapper::Shutdown().
-  scoped_refptr<ServiceWorkerContextWrapper> context_wrapper_;
+  // These fields are only accessed on the UI thread.
+  BrowserContext* browser_context_;
 
   // Maps the ID of a running EmbeddedWorkerInstance to information about the
   // process it's running inside. Since the Instances themselves live on the IO
@@ -104,13 +103,5 @@ class CONTENT_EXPORT ServiceWorkerProcessManager {
 };
 
 }  // namespace content
-
-namespace base {
-// Specialized to post the deletion to the UI thread.
-template <>
-struct CONTENT_EXPORT DefaultDeleter<content::ServiceWorkerProcessManager> {
-  void operator()(content::ServiceWorkerProcessManager* ptr) const;
-};
-}  // namespace base
 
 #endif  // CONTENT_BROWSER_SERVICE_WORKER_SERVICE_WORKER_PROCESS_MANAGER_H_

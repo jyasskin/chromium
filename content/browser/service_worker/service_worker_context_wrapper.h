@@ -11,6 +11,7 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
+#include "content/browser/service_worker/service_worker_process_manager.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/service_worker_context.h"
 
@@ -29,6 +30,7 @@ namespace content {
 class BrowserContext;
 class ServiceWorkerContextCore;
 class ServiceWorkerContextObserver;
+class ServiceWorkerProcessManager;
 
 // A refcounted wrapper class for our core object. Higher level content lib
 // classes keep references to this class on mutliple threads. The inner core
@@ -48,6 +50,11 @@ class CONTENT_EXPORT ServiceWorkerContextWrapper
 
   // The core context is only for use on the IO thread.
   ServiceWorkerContextCore* context();
+
+  // The process manager can be used on either UI or IO.
+  ServiceWorkerProcessManager* process_manager() {
+    return process_manager_.get();
+  }
 
   // ServiceWorkerContext implementation:
   virtual void RegisterServiceWorker(
@@ -74,8 +81,8 @@ class CONTENT_EXPORT ServiceWorkerContextWrapper
 
   const scoped_refptr<ObserverListThreadSafe<ServiceWorkerContextObserver> >
       observer_list_;
+  const scoped_ptr<ServiceWorkerProcessManager> process_manager_;
   // Cleared in Shutdown():
-  BrowserContext* browser_context_;
   scoped_ptr<ServiceWorkerContextCore> context_core_;
 };
 
