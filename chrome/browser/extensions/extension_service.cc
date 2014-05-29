@@ -2418,6 +2418,10 @@ void ExtensionService::UpdateGreylistedExtensions(
   }
 }
 
+void ExtensionService::ContentVerifyFailed(const std::string& extension_id) {
+  DisableExtension(extension_id, Extension::DISABLE_CORRUPTED);
+}
+
 void ExtensionService::AddUpdateObserver(extensions::UpdateObserver* observer) {
   update_observers_.AddObserver(observer);
 }

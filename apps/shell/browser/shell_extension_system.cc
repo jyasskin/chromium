@@ -173,4 +173,8 @@ const OneShotEvent& ShellExtensionSystem::ready() const {
   return ready_;
 }
 
+ContentVerifier* ShellExtensionSystem::content_verifier() {
+  return NULL;
+}
+
 }  // namespace extensions
