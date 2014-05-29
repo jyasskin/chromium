@@ -583,8 +583,8 @@ bool ExtensionService::UpdateExtension(const std::string& id,
   if (extension && extension->was_installed_by_oem())
     creation_flags |= Extension::WAS_INSTALLED_BY_OEM;
 
-  if (extension && extension->is_ephemeral())
-    creation_flags |= Extension::IS_EPHEMERAL;
+  if (extension)
+    installer->set_is_ephemeral(extension_prefs_->IsEphemeralApp(id));
 
   installer->set_creation_flags(creation_flags);
 
@@ -741,7 +741,7 @@ bool ExtensionService::UninstallExtension(const std::string& extension_id,
 
   // Do not remove the data of ephemeral apps. They will be garbage collected by
   // EphemeralAppService.
-  if (!extension->is_ephemeral())
+  if (!extension_prefs_->IsEphemeralApp(extension_id))
     extensions::DataDeleter::StartDeleting(profile_, extension.get());
 
   UntrackTerminatedExtension(extension_id);
@@ -1571,6 +1571,7 @@ void ExtensionService::AddComponentExtension(const Extension* extension) {
     AddNewOrUpdatedExtension(extension,
                              Extension::ENABLED_COMPONENT,
                              extensions::NOT_BLACKLISTED,
+                             false,
                              syncer::StringOrdinal(),
                              std::string());
     return;
@@ -1737,6 +1738,7 @@ void ExtensionService::OnExtensionInstalled(
     const syncer::StringOrdinal& page_ordinal,
     bool has_requirement_errors,
     extensions::BlacklistState blacklist_state,
+    bool is_ephemeral,
     bool wait_for_idle) {
   CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
 
@@ -1831,6 +1833,7 @@ void ExtensionService::OnExtensionInstalled(
         extension,
         initial_state,
         blacklisted_for_malware,
+        is_ephemeral,
         extensions::ExtensionPrefs::DELAY_REASON_WAIT_FOR_IDLE,
         page_ordinal,
         install_parameter);
@@ -1851,6 +1854,7 @@ void ExtensionService::OnExtensionInstalled(
         extension,
         initial_state,
         blacklisted_for_malware,
+        is_ephemeral,
         extensions::ExtensionPrefs::DELAY_REASON_GC,
         page_ordinal,
         install_parameter);
@@ -1861,6 +1865,7 @@ void ExtensionService::OnExtensionInstalled(
           extension,
           initial_state,
           blacklisted_for_malware,
+          is_ephemeral,
           extensions::ExtensionPrefs::DELAY_REASON_WAIT_FOR_IMPORTS,
           page_ordinal,
           install_parameter);
@@ -1870,6 +1875,7 @@ void ExtensionService::OnExtensionInstalled(
     AddNewOrUpdatedExtension(extension,
                              initial_state,
                              blacklist_state,
+                             is_ephemeral,
                              page_ordinal,
                              install_parameter);
   }
@@ -1879,6 +1885,7 @@ void ExtensionService::AddNewOrUpdatedExtension(
     const Extension* extension,
     Extension::State initial_state,
     extensions::BlacklistState blacklist_state,
+    bool is_ephemeral,
     const syncer::StringOrdinal& page_ordinal,
     const std::string& install_parameter) {
   CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
@@ -1887,6 +1894,7 @@ void ExtensionService::AddNewOrUpdatedExtension(
   extension_prefs_->OnExtensionInstalled(extension,
                                          initial_state,
                                          blacklisted_for_malware,
+                                         is_ephemeral,
                                          page_ordinal,
                                          install_parameter);
   delayed_installs_.Remove(extension->id());
