@@ -2183,6 +2183,8 @@
         'chrome',
         'test_support_common',
         '../base/base.gyp:base',
+        '../components/components.gyp:invalidation',
+        '../components/components.gyp:invalidation_test_support',
         '../net/net.gyp:net',
         '../skia/skia.gyp:skia',
         '../sync/sync.gyp:sync',
