@@ -21,7 +21,7 @@
 #include "content/public/renderer/document_state.h"
 #include "content/renderer/render_thread_impl.h"
 #include "content/renderer/service_worker/embedded_worker_dispatcher.h"
-#include "content/renderer/service_worker/service_worker_script_context.h"
+#include "content/renderer/service_worker/service_worker_script_context_impl.h"
 #include "ipc/ipc_message_macros.h"
 #include "third_party/WebKit/public/platform/WebServiceWorkerResponse.h"
 #include "third_party/WebKit/public/platform/WebString.h"
@@ -151,7 +151,7 @@ void EmbeddedWorkerContextClient::workerContextStarted(
   DCHECK(g_worker_client_tls.Pointer()->Get() == NULL);
   DCHECK(!script_context_);
   g_worker_client_tls.Pointer()->Set(this);
-  script_context_.reset(new ServiceWorkerScriptContext(this, proxy));
+  script_context_.reset(new ServiceWorkerScriptContextImpl(this, proxy));
 
   Send(new EmbeddedWorkerHostMsg_WorkerScriptLoaded(embedded_worker_id_));
 

@@ -27,7 +27,7 @@ class WebDataSource;
 
 namespace content {
 
-class ServiceWorkerScriptContext;
+class ServiceWorkerScriptContextImpl;
 class ThreadSafeSender;
 
 // This class provides access to/from an embedded worker's WorkerGlobalScope.
@@ -39,7 +39,7 @@ class ThreadSafeSender;
 // This should implement WebEmbeddedWorkerContextClient
 // or sort of it (which doesn't exist yet) rather than
 // WebServiceWorkerContextClient if we want to separate them more cleanly,
-// or ServiceWorkerScriptContext should be merged into this class
+// or ServiceWorkerScriptContextImpl should be merged into this class
 // if we consider EW == SW script context.
 class EmbeddedWorkerContextClient
     : public blink::WebServiceWorkerContextClient {
@@ -119,7 +119,7 @@ class EmbeddedWorkerContextClient
   scoped_refptr<base::MessageLoopProxy> main_thread_proxy_;
   scoped_refptr<base::TaskRunner> worker_task_runner_;
 
-  scoped_ptr<ServiceWorkerScriptContext> script_context_;
+  scoped_ptr<ServiceWorkerScriptContextImpl> script_context_;
 
   base::WeakPtrFactory<EmbeddedWorkerContextClient> weak_factory_;
 

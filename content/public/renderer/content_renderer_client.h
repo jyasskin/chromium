@@ -53,6 +53,7 @@ namespace content {
 class DocumentState;
 class RenderFrame;
 class RenderView;
+class ServiceWorkerScriptContext;
 class SynchronousCompositor;
 struct KeySystemInfo;
 struct WebPluginInfo;
@@ -72,6 +73,10 @@ class CONTENT_EXPORT ContentRendererClient {
 
   // Notifies that a new RenderView has been created.
   virtual void RenderViewCreated(RenderView* render_view) {}
+
+  // Notifies that a new ServiceWorkerScriptContext has been created.
+  virtual void ServiceWorkerScriptContextCreated(
+      ServiceWorkerScriptContext* service_worker) {}
 
   // Sets a number of views/tabs opened in this process.
   virtual void SetNumberOfViews(int number_of_views) {}

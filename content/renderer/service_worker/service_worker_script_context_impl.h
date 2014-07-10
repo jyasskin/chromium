@@ -2,14 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CONTENT_RENDERER_SERVICE_WORKER_SERVICE_WORKER_SCRIPT_CONTEXT_H_
-#define CONTENT_RENDERER_SERVICE_WORKER_SERVICE_WORKER_SCRIPT_CONTEXT_H_
+#ifndef CONTENT_RENDERER_SERVICE_WORKER_SERVICE_WORKER_SCRIPT_CONTEXT_IMPL_H_
+#define CONTENT_RENDERER_SERVICE_WORKER_SERVICE_WORKER_SCRIPT_CONTEXT_IMPL_H_
+
+#include "content/public/renderer/service_worker_script_context.h"
 
 #include <string>
 #include <vector>
 
 #include "base/basictypes.h"
 #include "base/id_map.h"
+#include "base/observer_list.h"
 #include "base/strings/string16.h"
 #include "content/child/webmessageportchannel_impl.h"
 #include "content/common/service_worker/service_worker_types.h"
@@ -28,17 +31,18 @@ class Message;
 namespace content {
 
 class EmbeddedWorkerContextClient;
+class ServiceWorkerScriptContextObserver;
 
 // TODO(kinuko): This should implement WebServiceWorkerContextClient
 // rather than having EmbeddedWorkerContextClient implement it.
 // See the header comment in embedded_worker_context_client.h for the
 // potential EW/SW layering concerns.
-class ServiceWorkerScriptContext {
+class ServiceWorkerScriptContextImpl : public ServiceWorkerScriptContext {
  public:
-  ServiceWorkerScriptContext(
+  ServiceWorkerScriptContextImpl(
       EmbeddedWorkerContextClient* embedded_context,
       blink::WebServiceWorkerContextProxy* proxy);
-  ~ServiceWorkerScriptContext();
+  ~ServiceWorkerScriptContextImpl();
 
   void OnMessageReceived(const IPC::Message& message);
 
@@ -57,12 +61,16 @@ class ServiceWorkerScriptContext {
       const base::string16& message,
       scoped_ptr<blink::WebMessagePortChannelArray> channels);
 
- private:
-  typedef IDMap<blink::WebServiceWorkerClientsCallbacks, IDMapOwnPointer>
-      ClientsCallbacksMap;
+  // Functions to add and remove observers for this object.
+  void AddObserver(ServiceWorkerScriptContextObserver* observer);
+  void RemoveObserver(ServiceWorkerScriptContextObserver* observer);
 
   // Send a message to the browser.
   void Send(IPC::Message* message);
+
+ private:
+  typedef IDMap<blink::WebServiceWorkerClientsCallbacks, IDMapOwnPointer>
+      ClientsCallbacksMap;
 
   void OnActivateEvent(int request_id);
   void OnInstallEvent(int request_id, int active_version_id);
@@ -93,9 +101,12 @@ class ServiceWorkerScriptContext {
   // Pending callbacks for GetClientDocuments().
   ClientsCallbacksMap pending_clients_callbacks_;
 
-  DISALLOW_COPY_AND_ASSIGN(ServiceWorkerScriptContext);
+  // All the registered observers.
+  ObserverList<ServiceWorkerScriptContextObserver> observers_;
+
+  DISALLOW_COPY_AND_ASSIGN(ServiceWorkerScriptContextImpl);
 };
 
 }  // namespace content
 
-#endif  // CONTENT_RENDERER_SERVICE_WORKER_SERVICE_WORKER_SCRIPT_CONTEXT_H_
+#endif  // CONTENT_RENDERER_SERVICE_WORKER_SERVICE_WORKER_SCRIPT_CONTEXT_IMPL_H_

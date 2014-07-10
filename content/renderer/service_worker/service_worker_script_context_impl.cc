@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "content/renderer/service_worker/service_worker_script_context.h"
+#include "content/renderer/service_worker/service_worker_script_context_impl.h"
 
 #include "base/logging.h"
 #include "content/child/thread_safe_sender.h"
 #include "content/child/webmessageportchannel_impl.h"
 #include "content/common/service_worker/service_worker_messages.h"
+#include "content/public/renderer/service_worker_script_context_observer.h"
 #include "content/renderer/service_worker/embedded_worker_context_client.h"
 #include "ipc/ipc_message.h"
 #include "third_party/WebKit/public/platform/WebReferrerPolicy.h"
@@ -34,19 +35,31 @@ void SendPostMessageToDocumentOnMainThread(
 
 }  // namespace
 
-ServiceWorkerScriptContext::ServiceWorkerScriptContext(
+ServiceWorkerScriptContextImpl::ServiceWorkerScriptContextImpl(
     EmbeddedWorkerContextClient* embedded_context,
     blink::WebServiceWorkerContextProxy* proxy)
     : embedded_context_(embedded_context),
       proxy_(proxy) {
 }
 
-ServiceWorkerScriptContext::~ServiceWorkerScriptContext() {}
+ServiceWorkerScriptContextImpl::~ServiceWorkerScriptContextImpl() {
+  FOR_EACH_OBSERVER(ServiceWorkerScriptContextObserver,
+                    observers_,
+                    ServiceWorkerScriptContextGone());
+  FOR_EACH_OBSERVER(
+      ServiceWorkerScriptContextObserver, observers_, OnDestruct());
+}
 
-void ServiceWorkerScriptContext::OnMessageReceived(
+void ServiceWorkerScriptContextImpl::OnMessageReceived(
     const IPC::Message& message) {
+  ObserverListBase<ServiceWorkerScriptContextObserver>::Iterator it(observers_);
+  ServiceWorkerScriptContextObserver* observer;
+  while ((observer = it.GetNext()) != NULL)
+    if (observer->OnMessageReceived(message))
+      return;
+
   bool handled = true;
-  IPC_BEGIN_MESSAGE_MAP(ServiceWorkerScriptContext, message)
+  IPC_BEGIN_MESSAGE_MAP(ServiceWorkerScriptContextImpl, message)
     IPC_MESSAGE_HANDLER(ServiceWorkerMsg_ActivateEvent, OnActivateEvent)
     IPC_MESSAGE_HANDLER(ServiceWorkerMsg_FetchEvent, OnFetchEvent)
     IPC_MESSAGE_HANDLER(ServiceWorkerMsg_InstallEvent, OnInstallEvent)
@@ -60,21 +73,21 @@ void ServiceWorkerScriptContext::OnMessageReceived(
   DCHECK(handled);
 }
 
-void ServiceWorkerScriptContext::DidHandleActivateEvent(
+void ServiceWorkerScriptContextImpl::DidHandleActivateEvent(
     int request_id,
     blink::WebServiceWorkerEventResult result) {
   Send(new ServiceWorkerHostMsg_ActivateEventFinished(
       GetRoutingID(), request_id, result));
 }
 
-void ServiceWorkerScriptContext::DidHandleInstallEvent(
+void ServiceWorkerScriptContextImpl::DidHandleInstallEvent(
     int request_id,
     blink::WebServiceWorkerEventResult result) {
   Send(new ServiceWorkerHostMsg_InstallEventFinished(
       GetRoutingID(), request_id, result));
 }
 
-void ServiceWorkerScriptContext::DidHandleFetchEvent(
+void ServiceWorkerScriptContextImpl::DidHandleFetchEvent(
     int request_id,
     ServiceWorkerFetchEventResult result,
     const ServiceWorkerResponse& response) {
@@ -82,12 +95,12 @@ void ServiceWorkerScriptContext::DidHandleFetchEvent(
       GetRoutingID(), request_id, result, response));
 }
 
-void ServiceWorkerScriptContext::DidHandleSyncEvent(int request_id) {
+void ServiceWorkerScriptContextImpl::DidHandleSyncEvent(int request_id) {
   Send(new ServiceWorkerHostMsg_SyncEventFinished(
       GetRoutingID(), request_id));
 }
 
-void ServiceWorkerScriptContext::GetClientDocuments(
+void ServiceWorkerScriptContextImpl::GetClientDocuments(
     blink::WebServiceWorkerClientsCallbacks* callbacks) {
   DCHECK(callbacks);
   int request_id = pending_clients_callbacks_.Add(callbacks);
@@ -95,7 +108,7 @@ void ServiceWorkerScriptContext::GetClientDocuments(
       GetRoutingID(), request_id));
 }
 
-void ServiceWorkerScriptContext::PostMessageToDocument(
+void ServiceWorkerScriptContextImpl::PostMessageToDocument(
     int client_id,
     const base::string16& message,
     scoped_ptr<blink::WebMessagePortChannelArray> channels) {
@@ -110,20 +123,31 @@ void ServiceWorkerScriptContext::PostMessageToDocument(
                  GetRoutingID(), client_id, message, base::Passed(&channels)));
 }
 
-void ServiceWorkerScriptContext::Send(IPC::Message* message) {
+void ServiceWorkerScriptContextImpl::AddObserver(
+    ServiceWorkerScriptContextObserver* observer) {
+  observers_.AddObserver(observer);
+}
+
+void ServiceWorkerScriptContextImpl::RemoveObserver(
+    ServiceWorkerScriptContextObserver* observer) {
+  observer->ServiceWorkerScriptContextGone();
+  observers_.RemoveObserver(observer);
+}
+
+void ServiceWorkerScriptContextImpl::Send(IPC::Message* message) {
   embedded_context_->Send(message);
 }
 
-void ServiceWorkerScriptContext::OnActivateEvent(int request_id) {
+void ServiceWorkerScriptContextImpl::OnActivateEvent(int request_id) {
   proxy_->dispatchActivateEvent(request_id);
 }
 
-void ServiceWorkerScriptContext::OnInstallEvent(int request_id,
+void ServiceWorkerScriptContextImpl::OnInstallEvent(int request_id,
                                                 int active_version_id) {
   proxy_->dispatchInstallEvent(request_id);
 }
 
-void ServiceWorkerScriptContext::OnFetchEvent(
+void ServiceWorkerScriptContextImpl::OnFetchEvent(
     int request_id,
     const ServiceWorkerFetchRequest& request) {
   blink::WebServiceWorkerRequest webRequest;
@@ -142,18 +166,18 @@ void ServiceWorkerScriptContext::OnFetchEvent(
   proxy_->dispatchFetchEvent(request_id, webRequest);
 }
 
-void ServiceWorkerScriptContext::OnSyncEvent(int request_id) {
+void ServiceWorkerScriptContextImpl::OnSyncEvent(int request_id) {
   proxy_->dispatchSyncEvent(request_id);
 }
 
-void ServiceWorkerScriptContext::OnPushEvent(int request_id,
+void ServiceWorkerScriptContextImpl::OnPushEvent(int request_id,
                                              const std::string& data) {
   proxy_->dispatchPushEvent(request_id, blink::WebString::fromUTF8(data));
   Send(new ServiceWorkerHostMsg_PushEventFinished(
       GetRoutingID(), request_id));
 }
 
-void ServiceWorkerScriptContext::OnPostMessage(
+void ServiceWorkerScriptContextImpl::OnPostMessage(
     const base::string16& message,
     const std::vector<int>& sent_message_port_ids,
     const std::vector<int>& new_routing_ids) {
@@ -170,7 +194,7 @@ void ServiceWorkerScriptContext::OnPostMessage(
   proxy_->dispatchMessageEvent(message, ports);
 }
 
-void ServiceWorkerScriptContext::OnDidGetClientDocuments(
+void ServiceWorkerScriptContextImpl::OnDidGetClientDocuments(
     int request_id, const std::vector<int>& client_ids) {
   blink::WebServiceWorkerClientsCallbacks* callbacks =
       pending_clients_callbacks_.Lookup(request_id);
@@ -185,7 +209,7 @@ void ServiceWorkerScriptContext::OnDidGetClientDocuments(
   pending_clients_callbacks_.Remove(request_id);
 }
 
-int ServiceWorkerScriptContext::GetRoutingID() const {
+int ServiceWorkerScriptContextImpl::GetRoutingID() const {
   return embedded_context_->embedded_worker_id();
 }
 
