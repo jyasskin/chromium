@@ -87,6 +87,7 @@
 #include "extensions/renderer/dispatcher.h"
 #include "extensions/renderer/extension_helper.h"
 #include "extensions/renderer/script_context.h"
+#include "extensions/renderer/service_worker_script_context_helper.h"
 #include "grit/generated_resources.h"
 #include "grit/locale_settings.h"
 #include "grit/renderer_resources.h"
@@ -481,6 +482,11 @@ void ChromeContentRendererClient::RenderViewCreated(
     new SearchBox(render_view);
 
   new ChromeRenderViewObserver(render_view, chrome_observer_.get());
+}
+
+void ChromeContentRendererClient::ServiceWorkerScriptContextCreated(
+    content::ServiceWorkerScriptContext* service_worker) {
+  new extensions::ServiceWorkerScriptContextHelper(service_worker);
 }
 
 void ChromeContentRendererClient::SetNumberOfViews(int number_of_views) {

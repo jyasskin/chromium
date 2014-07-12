@@ -19,6 +19,7 @@
 #include "third_party/WebKit/public/platform/WebMessagePortChannel.h"
 #include "third_party/WebKit/public/platform/WebServiceWorkerClientsInfo.h"
 #include "third_party/WebKit/public/platform/WebServiceWorkerEventResult.h"
+#include "v8/include/v8.h"
 
 namespace blink {
 class WebServiceWorkerContextProxy;
@@ -39,9 +40,8 @@ class ServiceWorkerScriptContextObserver;
 // potential EW/SW layering concerns.
 class ServiceWorkerScriptContextImpl : public ServiceWorkerScriptContext {
  public:
-  ServiceWorkerScriptContextImpl(
-      EmbeddedWorkerContextClient* embedded_context,
-      blink::WebServiceWorkerContextProxy* proxy);
+  ServiceWorkerScriptContextImpl(EmbeddedWorkerContextClient* embedded_context,
+                                 blink::WebServiceWorkerContextProxy* proxy);
   ~ServiceWorkerScriptContextImpl();
 
   void OnMessageReceived(const IPC::Message& message);
@@ -60,6 +60,8 @@ class ServiceWorkerScriptContextImpl : public ServiceWorkerScriptContext {
       int client_id,
       const base::string16& message,
       scoped_ptr<blink::WebMessagePortChannelArray> channels);
+
+  v8::Handle<v8::Context> v8Context();
 
   // Functions to add and remove observers for this object.
   void AddObserver(ServiceWorkerScriptContextObserver* observer);

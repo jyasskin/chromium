@@ -8,13 +8,14 @@
 #include "content/common/content_export.h"
 #include "ipc/ipc_listener.h"
 #include "ipc/ipc_sender.h"
+#include "v8/include/v8.h"
 
 namespace content {
 
 class ServiceWorkerScriptContext;
 
-// Base class for objects that want to filter incoming IPCs, and also get
-// notified of changes to the frame.
+// Base class for objects that want to filter incoming IPCs. Unless the derived
+// class overrides OnDestruct(), it's owned by the ServiceWorkerScriptContext.
 class CONTENT_EXPORT ServiceWorkerScriptContextObserver : public IPC::Listener,
                                                           public IPC::Sender {
  public:
@@ -25,12 +26,16 @@ class CONTENT_EXPORT ServiceWorkerScriptContextObserver : public IPC::Listener,
   // IPC::Listener implementation.
   virtual bool OnMessageReceived(const IPC::Message& message) OVERRIDE;
 
-  // IPC::Sender implementation.
+  // IPC::Sender implementation.  Sends to the browser process.
   virtual bool Send(IPC::Message* message) OVERRIDE;
 
  protected:
-  explicit ServiceWorkerScriptContextObserver(ServiceWorkerScriptContext* service_worker);
+  explicit ServiceWorkerScriptContextObserver(
+      ServiceWorkerScriptContext* service_worker);
   virtual ~ServiceWorkerScriptContextObserver();
+
+  // Returns the v8::Context of the ServiceWorker's script.
+  v8::Handle<v8::Context> v8Context();
 
  private:
   friend class ServiceWorkerScriptContextImpl;

@@ -38,8 +38,7 @@ void SendPostMessageToDocumentOnMainThread(
 ServiceWorkerScriptContextImpl::ServiceWorkerScriptContextImpl(
     EmbeddedWorkerContextClient* embedded_context,
     blink::WebServiceWorkerContextProxy* proxy)
-    : embedded_context_(embedded_context),
-      proxy_(proxy) {
+    : embedded_context_(embedded_context), proxy_(proxy) {
 }
 
 ServiceWorkerScriptContextImpl::~ServiceWorkerScriptContextImpl() {
@@ -123,6 +122,10 @@ void ServiceWorkerScriptContextImpl::PostMessageToDocument(
                  GetRoutingID(), client_id, message, base::Passed(&channels)));
 }
 
+v8::Handle<v8::Context> ServiceWorkerScriptContextImpl::v8Context() {
+  return proxy_->v8Context();
+}
+
 void ServiceWorkerScriptContextImpl::AddObserver(
     ServiceWorkerScriptContextObserver* observer) {
   observers_.AddObserver(observer);
@@ -143,7 +146,7 @@ void ServiceWorkerScriptContextImpl::OnActivateEvent(int request_id) {
 }
 
 void ServiceWorkerScriptContextImpl::OnInstallEvent(int request_id,
-                                                int active_version_id) {
+                                                    int active_version_id) {
   proxy_->dispatchInstallEvent(request_id);
 }
 
@@ -171,7 +174,7 @@ void ServiceWorkerScriptContextImpl::OnSyncEvent(int request_id) {
 }
 
 void ServiceWorkerScriptContextImpl::OnPushEvent(int request_id,
-                                             const std::string& data) {
+                                                 const std::string& data) {
   proxy_->dispatchPushEvent(request_id, blink::WebString::fromUTF8(data));
   Send(new ServiceWorkerHostMsg_PushEventFinished(
       GetRoutingID(), request_id));
@@ -195,7 +198,8 @@ void ServiceWorkerScriptContextImpl::OnPostMessage(
 }
 
 void ServiceWorkerScriptContextImpl::OnDidGetClientDocuments(
-    int request_id, const std::vector<int>& client_ids) {
+    int request_id,
+    const std::vector<int>& client_ids) {
   blink::WebServiceWorkerClientsCallbacks* callbacks =
       pending_clients_callbacks_.Lookup(request_id);
   if (!callbacks) {

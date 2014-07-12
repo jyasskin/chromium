@@ -66,6 +66,8 @@ class ChromeContentRendererClient : public content::ContentRendererClient {
   virtual void RenderThreadStarted() OVERRIDE;
   virtual void RenderFrameCreated(content::RenderFrame* render_frame) OVERRIDE;
   virtual void RenderViewCreated(content::RenderView* render_view) OVERRIDE;
+  virtual void ServiceWorkerScriptContextCreated(
+      content::ServiceWorkerScriptContext* service_worker) OVERRIDE;
   virtual void SetNumberOfViews(int number_of_views) OVERRIDE;
   virtual SkBitmap* GetSadPluginBitmap() OVERRIDE;
   virtual SkBitmap* GetSadWebViewBitmap() OVERRIDE;

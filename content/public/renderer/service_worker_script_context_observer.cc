@@ -9,7 +9,8 @@
 
 namespace content {
 
-ServiceWorkerScriptContextObserver::ServiceWorkerScriptContextObserver(ServiceWorkerScriptContext* service_worker)
+ServiceWorkerScriptContextObserver::ServiceWorkerScriptContextObserver(
+    ServiceWorkerScriptContext* service_worker)
     : service_worker_(service_worker) {
   // |service_worker| can be NULL in unit testing or if Observe() is used.
   if (service_worker) {
@@ -31,7 +32,8 @@ void ServiceWorkerScriptContextObserver::OnDestruct() {
   delete this;
 }
 
-bool ServiceWorkerScriptContextObserver::OnMessageReceived(const IPC::Message& message) {
+bool ServiceWorkerScriptContextObserver::OnMessageReceived(
+    const IPC::Message& message) {
   return false;
 }
 
@@ -44,6 +46,14 @@ bool ServiceWorkerScriptContextObserver::Send(IPC::Message* message) {
 
   delete message;
   return false;
+}
+
+v8::Handle<v8::Context> ServiceWorkerScriptContextObserver::v8Context() {
+  if (service_worker_) {
+    return static_cast<ServiceWorkerScriptContextImpl*>(service_worker_)
+        ->v8Context();
+  }
+  return v8::Handle<v8::Context>();
 }
 
 void ServiceWorkerScriptContextObserver::ServiceWorkerScriptContextGone() {
