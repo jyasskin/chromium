@@ -4,11 +4,21 @@
 
 #include "extensions/renderer/service_worker_script_context_helper.h"
 
+#include "extensions/renderer/dispatcher.h"
+
 namespace extensions {
 
 ServiceWorkerScriptContextHelper::ServiceWorkerScriptContextHelper(
-    content::ServiceWorkerScriptContext* service_worker)
-    : content::ServiceWorkerScriptContextObserver(service_worker) {
+    content::ServiceWorkerScriptContext* service_worker,
+    Dispatcher* dispatcher)
+    : content::ServiceWorkerScriptContextObserver(service_worker),
+      dispatcher_(dispatcher),
+      weak_this_(this) {
+  main_thread_task_runner()->PostTask(
+      base::Bind(&Dispatcher::RecordServiceWorkerScriptContext,
+                 dispatcher_,
+                 weak_this_.GetWeakPtr(),
+                 scoped_refptr<TaskRunner>(worker_task_runner())));
 }
 
 ServiceWorkerScriptContextHelper::~ServiceWorkerScriptContextHelper() {

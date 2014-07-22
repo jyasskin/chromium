@@ -48,7 +48,26 @@ bool ServiceWorkerScriptContextObserver::Send(IPC::Message* message) {
   return false;
 }
 
-v8::Handle<v8::Context> ServiceWorkerScriptContextObserver::v8Context() {
+base::SingleThreadTaskRunner*
+ServiceWorkerScriptContextObserver::main_thread_task_runner() const {
+  if (service_worker_) {
+    return static_cast<ServiceWorkerScriptContextImpl*>(service_worker_)
+        ->main_thread_task_runner();
+  }
+  return NULL;
+
+}
+
+base::TaskRunner* ServiceWorkerScriptContextObserver::worker_task_runner()
+    const {
+  if (service_worker_) {
+    return static_cast<ServiceWorkerScriptContextImpl*>(service_worker_)
+        ->worker_task_runner();
+  }
+  return NULL;
+}
+
+v8::Handle<v8::Context> ServiceWorkerScriptContextObserver::v8Context() const {
   if (service_worker_) {
     return static_cast<ServiceWorkerScriptContextImpl*>(service_worker_)
         ->v8Context();

@@ -10,6 +10,11 @@
 #include "ipc/ipc_sender.h"
 #include "v8/include/v8.h"
 
+namespace base {
+class SingleThreadTaskRunner;
+class TaskRunner;
+}
+
 namespace content {
 
 class ServiceWorkerScriptContext;
@@ -21,21 +26,35 @@ class CONTENT_EXPORT ServiceWorkerScriptContextObserver : public IPC::Listener,
  public:
   // By default, observers will be deleted when the ServiceWorkerScriptContext
   // goes away. If they want to outlive it, they can override this function.
+  // However, beware that the TaskRunner's thread also ends shortly after the
+  // ServiceWorkerScriptContext is destroyed, so it may be difficult to use this
+  // object safely after that.
   virtual void OnDestruct();
 
   // IPC::Listener implementation.
   virtual bool OnMessageReceived(const IPC::Message& message) OVERRIDE;
-
-  // IPC::Sender implementation.  Sends to the browser process.
-  virtual bool Send(IPC::Message* message) OVERRIDE;
 
  protected:
   explicit ServiceWorkerScriptContextObserver(
       ServiceWorkerScriptContext* service_worker);
   virtual ~ServiceWorkerScriptContextObserver();
 
-  // Returns the v8::Context of the ServiceWorker's script.
-  v8::Handle<v8::Context> v8Context();
+  // Helper functions for subclasses of ServiceWorkerScriptContextObserver:
+
+  // IPC::Sender implementation.  Sends to the browser process.
+  virtual bool Send(IPC::Message* message) OVERRIDE;
+
+  // The TaskRunner for the main thread.
+  base::SingleThreadTaskRunner* main_thread_task_runner() const;
+
+  // All virtual functions are called inside this TaskRunner, and all methods of
+  // this object must be called inside this TaskRunner. This also gives access
+  // to the thread the ServiceWorker's code runs on.
+  base::TaskRunner* worker_task_runner() const;
+
+  // Returns the v8::Context of the ServiceWorker's script. Create a
+  // HandleScope(v8::Isolate::GetCurrent()) before calling this.
+  v8::Handle<v8::Context> v8Context() const;
 
  private:
   friend class ServiceWorkerScriptContextImpl;

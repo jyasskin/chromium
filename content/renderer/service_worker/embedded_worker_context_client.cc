@@ -155,9 +155,8 @@ void EmbeddedWorkerContextClient::workerContextStarted(
 
   Send(new EmbeddedWorkerHostMsg_WorkerScriptLoaded(embedded_worker_id_));
 
-  // Schedule a task to send back WorkerStarted asynchronously,
-  // so that at the time we send it we can be sure that the worker
-  // script has been evaluated and worker run loop has been started.
+  // Schedule a task to send back WorkerStarted asynchronously, so that we send
+  // it after we report any exceptions caused by the initial script execution.
   worker_task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&EmbeddedWorkerContextClient::SendWorkerStarted,

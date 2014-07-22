@@ -8,6 +8,8 @@
 #include "content/child/thread_safe_sender.h"
 #include "content/child/webmessageportchannel_impl.h"
 #include "content/common/service_worker/service_worker_messages.h"
+#include "content/public/common/content_client.h"
+#include "content/public/renderer/content_renderer_client.h"
 #include "content/public/renderer/service_worker_script_context_observer.h"
 #include "content/renderer/service_worker/embedded_worker_context_client.h"
 #include "ipc/ipc_message.h"
@@ -39,6 +41,7 @@ ServiceWorkerScriptContextImpl::ServiceWorkerScriptContextImpl(
     EmbeddedWorkerContextClient* embedded_context,
     blink::WebServiceWorkerContextProxy* proxy)
     : embedded_context_(embedded_context), proxy_(proxy) {
+  GetContentClient()->renderer()->ServiceWorkerScriptContextCreated(this);
 }
 
 ServiceWorkerScriptContextImpl::~ServiceWorkerScriptContextImpl() {
@@ -122,7 +125,16 @@ void ServiceWorkerScriptContextImpl::PostMessageToDocument(
                  GetRoutingID(), client_id, message, base::Passed(&channels)));
 }
 
-v8::Handle<v8::Context> ServiceWorkerScriptContextImpl::v8Context() {
+base::SingleThreadTaskRunner*
+ServiceWorkerScriptContextImpl::main_thread_task_runner() const {
+  return embedded_context_->main_thread_proxy();
+}
+
+base::TaskRunner* ServiceWorkerScriptContextImpl::worker_task_runner() const {
+  return embedded_context_->worker_task_runner();
+}
+
+v8::Handle<v8::Context> ServiceWorkerScriptContextImpl::v8Context() const {
   return proxy_->v8Context();
 }
 

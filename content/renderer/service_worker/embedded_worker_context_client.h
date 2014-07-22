@@ -103,6 +103,7 @@ class EmbeddedWorkerContextClient
     return main_thread_proxy_;
   }
   ThreadSafeSender* thread_safe_sender() { return sender_; }
+  base::TaskRunner* worker_task_runner() const { return worker_task_runner_; }
 
  private:
   void OnMessageToWorker(int thread_id,

@@ -21,6 +21,11 @@
 #include "third_party/WebKit/public/platform/WebServiceWorkerEventResult.h"
 #include "v8/include/v8.h"
 
+namespace base {
+class SingleThreadTaskRunner;
+class TaskRunner;
+}
+
 namespace blink {
 class WebServiceWorkerContextProxy;
 }
@@ -61,7 +66,10 @@ class ServiceWorkerScriptContextImpl : public ServiceWorkerScriptContext {
       const base::string16& message,
       scoped_ptr<blink::WebMessagePortChannelArray> channels);
 
-  v8::Handle<v8::Context> v8Context();
+  // See ServiceWorkerScriptContextObserver for documentation.
+  base::SingleThreadTaskRunner* main_thread_task_runner() const;
+  base::TaskRunner* worker_task_runner() const;
+  v8::Handle<v8::Context> v8Context() const;
 
   // Functions to add and remove observers for this object.
   void AddObserver(ServiceWorkerScriptContextObserver* observer);
